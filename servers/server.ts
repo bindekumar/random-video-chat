@@ -11,10 +11,18 @@ import { connectToDatabase } from "../lib/db";
 // Create HTTP Server
 const server = createServer(app);
 
+// Allowed origins array for production & local development
+const allowedOrigins = [
+  "https://vchatz.com",
+  "https://www.vchatz.com",
+  "http://localhost:3000",
+  process.env.CLIENT_URL,
+].filter(Boolean) as string[];
+
 // Create Socket.IO Server
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -38,11 +46,9 @@ async function startServer() {
 
     console.log("✅ Socket.IO Initialized");
 
-    server.listen(PORT, () => {
+    server.listen(PORT, "0.0.0.0", () => {
       console.log("=================================");
-      console.log(`🚀 Server Running`);
-      console.log(`🌐 Express : http://localhost:${PORT}`);
-      console.log(`🔌 Socket  : ws://localhost:${PORT}`);
+      console.log(`🚀 Server Running on Port ${PORT}`);
       console.log("=================================");
     });
   } catch (error) {
