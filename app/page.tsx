@@ -30,43 +30,27 @@ export default function Home() {
       <Header />
 
       {/* MAIN */}
-      <main className="relative z-10 w-full flex-1 pt-1 sm:pt-4 lg:pt-10">
+      <main className="relative z-10 w-full flex-1">
         {/* HERO SECTION */}
-        <section className="relative mx-auto w-full pb-6 max-w-[1440px] overflow-hidden bg-[#eef3f9]">
-          {/* MOBILE / TABLET IMAGE */}
-          <div className="relative block h-[200px] w-full sm:h-[300px] lg:hidden">
-            <Image
-              src="/hero-bg-woman.png"
-              alt="VChatz"
-              fill
-              priority
-              sizes="100vw"
-              className="object-cover object-center sm:object-[58%_center]"
-            />
-            {/* Soft Overlay */}
-            {/* <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#eef3f9]" /> */}
-          </div>
-
-          {/* DESKTOP BACKGROUND IMAGE */}
-          <div className="absolute inset-0 hidden lg:block">
+        <section className="relative mx-auto w-full pt-8 pb-12 sm:pt-16 sm:pb-16 max-w-[1440px] overflow-hidden bg-[#eef3f9]">
+          
+          {/* BACKGROUND IMAGE (Clean responsive setup) */}
+          <div className="absolute inset-0 z-0">
             <Image
               src="/hero-bg-woman.png"
               alt="VChatz Background Woman"
               fill
               priority
               sizes="100vw"
-              className="object-cover object-[55%_top]"
+              className="object-cover object-center lg:object-[55%_top]"
             />
-            {/* Desktop Soft Overlay */}
-            {/* <div className="absolute inset-0 bg-gradient-to-r from-[#eef3f9]/95 via-[#eef3f9]/35 to-transparent" /> */}
           </div>
 
           {/* FLOATING MALE USER CARD */}
-          <div className="pointer-events-none absolute z-20 hidden sm:right-5 sm:top-[55px] sm:block md:right-[8%] md:top-[65px] lg:left-[55%] lg:right-auto lg:top-[70px]">
-            {/* Reduced width/height classes below */}
-            <div className="relative h-[80px] w-[90px] overflow-hidden rounded-[14px] border-[2px] border-white bg-white shadow-[0_10px_20px_rgba(0,0,0,0.12)] md:h-[95px] md:w-[105px] lg:h-[105px] lg:w-[115px] xl:h-[115px] xl:w-[125px]">
+          <div className="pointer-events-none absolute right-4 top-6 z-20 sm:right-5 sm:top-[55px] md:right-[8%] md:top-[65px] lg:left-[57%] lg:right-auto lg:top-[100px]">
+            <div className="relative h-[65px] w-[75px] overflow-hidden rounded-[14px] border-[2px] border-white bg-white shadow-[0_10px_20px_rgba(0,0,0,0.12)] sm:h-[80px] sm:w-[90px] md:h-[95px] md:w-[105px] lg:h-[105px] lg:w-[115px] xl:h-[115px] xl:w-[125px]">
               {/* ONLINE DOT */}
-              <span className="absolute left-1.5 top-1.5 z-30 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#10b981] shadow-sm" />
+              <span className="absolute left-1.5 top-1.5 z-30 h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full border-2 border-white bg-[#10b981] shadow-sm" />
 
               <Image
                 src="/male-user-preview.png"
@@ -79,11 +63,11 @@ export default function Home() {
           </div>
 
           {/* HERO CONTENT */}
-          <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col items-center px-4 pb-8 sm:px-6 sm:pb-10 lg:grid lg:grid-cols-12 lg:items-center lg:gap-6 lg:px-8 lg:py-16 xl:px-10">
+          <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col items-center px-4 pt-6 pb-10 sm:px-6 sm:pb-12 lg:grid lg:grid-cols-12 lg:items-center lg:gap-6 lg:px-8 lg:py-16 xl:px-10">
             {/* LEFT CONTENT */}
             <section className="flex w-full flex-col items-center text-center lg:col-span-7 lg:items-start lg:text-left">
               {/* ONLINE BADGE */}
-              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur-md sm:mb-4 sm:px-4 lg:mb-3">
+              <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3.5 py-1.5 shadow-sm backdrop-blur-md sm:mb-5 sm:px-4 lg:mb-3">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-[#10b981]" />
                 <span className="text-[11px] font-bold text-[#10b981] sm:text-sm">
                   1,240+ Users Online
@@ -91,7 +75,7 @@ export default function Home() {
               </div>
 
               {/* HEADING */}
-              <h1 className="max-w-[300px] text-[26px] font-black leading-[1.08] tracking-tight text-[#0f172a] sm:max-w-[450px] sm:text-[34px] md:text-[38px] lg:max-w-[520px] lg:text-[36px] xl:text-[44px]">
+              <h1 className="max-w-[320px] text-[28px] font-black leading-[1.12] tracking-tight text-[#0f172a] sm:max-w-[450px] sm:text-[34px] md:text-[38px] lg:max-w-[520px] lg:text-[36px] xl:text-[44px]">
                 Connect Instantly
                 <br />
                 <span className="text-[#2563eb]">With People</span>
@@ -100,13 +84,13 @@ export default function Home() {
               </h1>
 
               {/* DESCRIPTION */}
-              <p className="mt-3 max-w-[330px] text-[13px] font-medium leading-[1.5] text-slate-700 sm:max-w-[470px] sm:text-[15px] lg:max-w-[430px] lg:text-[14px] xl:text-[15px]">
+              <p className="mt-3 max-w-[320px] text-[13px] font-medium leading-[1.6] text-slate-700 sm:max-w-[470px] sm:text-[15px] lg:max-w-[430px] lg:text-[14px] xl:text-[15px]">
                 Meet new friends, have live text chats, or start random video
                 calls safely in seconds.
               </p>
 
               {/* FEATURE ICONS */}
-              <div className="mt-5 flex w-full items-start justify-center gap-8 sm:mt-6 sm:gap-12 lg:justify-start lg:gap-8">
+              <div className="mt-5 flex w-full items-start justify-center gap-8 sm:mt-8 sm:gap-12 lg:justify-start lg:gap-8">
                 {/* CHAT */}
                 <div className="flex shrink-0 flex-col items-center gap-1.5">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-100/50 bg-white/95 text-blue-600 shadow-md sm:h-11 sm:w-11">
@@ -140,7 +124,7 @@ export default function Home() {
             </section>
 
             {/* CHAT SETUP CARD */}
-            <section className="mt-5 flex w-full justify-center sm:mt-6 md:mt-7 lg:col-span-5 lg:mt-0 lg:justify-end">
+            <section className="mt-6 flex w-full justify-center sm:mt-8 md:mt-10 lg:col-span-5 lg:mt-0 lg:justify-end">
               <div className="w-full max-w-[360px] rounded-[18px] border border-white/80 bg-white/95 p-4 shadow-[0_15px_35px_rgba(15,23,42,0.08)] backdrop-blur-md sm:p-[18px] lg:max-w-[330px] xl:max-w-[350px]">
                 {/* CARD TITLE */}
                 <h2 className="text-[18px] font-black leading-tight tracking-tight text-[#0f172a] sm:text-[19px]">
@@ -161,7 +145,7 @@ export default function Home() {
           </div>
 
           {/* BOTTOM FEATURES */}
-          <div className="mx-auto mt-4 w-full max-w-7xl px-4 sm:mt-8 sm:px-6 lg:mt-10 lg:px-8 banner-down-se">
+          <div className="mx-auto mt-8 w-full max-w-7xl px-4 sm:mt-12 sm:px-6 lg:mt-16 lg:px-8 banner-down-se">
             <div className="rounded-[24px] border border-white bg-white p-3 shadow-[0_10px_30px_rgba(0,0,0,0.03)] sm:rounded-[26px] sm:p-4">
               <div className="grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
                 <FeatureItem
@@ -191,8 +175,6 @@ export default function Home() {
               </div>
             </div>
           </div>
-          
-          
         </section>
       </main>
 

@@ -20,7 +20,7 @@ export default function Header() {
     <header className="fixed top-0 left-0 z-50 w-full border-b border-slate-100 bg-white/90 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1500px] items-center justify-between px-4 sm:h-18 sm:px-6 lg:h-20 lg:px-8">
         
-        {/* LOGO */}
+        {/* LOGO (Size Increased) */}
         <Link
           href="/"
           className="flex shrink-0 items-center transition-transform duration-200 hover:scale-[1.02]"
@@ -28,10 +28,10 @@ export default function Header() {
           <Image
             src="/logo-header.png"
             alt="VChatz"
-            width={160}
-            height={55}
+            width={185}
+            height={65}
             priority
-            className="h-auto w-[110px] sm:w-[130px] lg:w-[145px]"
+            className="h-auto w-[130px] sm:w-[155px] lg:w-[180px]"
           />
         </Link>
 

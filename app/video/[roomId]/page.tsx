@@ -3,6 +3,7 @@
 import { use, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Send,
   ShieldCheck,
@@ -28,9 +29,11 @@ import {
   UserPlus,
   Eye,
   EyeOff,
-  Menu,
   MessageCircle,
   X,
+  PhoneOff,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import { socket } from "@/lib/socket";
 import { SOCKET_EVENTS } from "@/servers/socket/events";
@@ -64,6 +67,7 @@ const ICE_SERVERS: RTCConfiguration = {
 };
 
 export default function CombinedVideoChatPage({ params }: Props) {
+  const router = useRouter();
   const { roomId: initialRoomId } = use(params);
 
   // Current Active Room State
@@ -81,8 +85,9 @@ export default function CombinedVideoChatPage({ params }: Props) {
   const [isFriendAdded, setIsFriendAdded] = useState(false);
   const [hideRemoteVideo, setHideRemoteVideo] = useState(false);
 
-  // Mobile Drawer Chat State
-  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  // Mute & Chat Toggle States
+  const [isMuted, setIsMuted] = useState(false);
+  const [isChatVisible, setIsChatVisible] = useState(false);
 
   // Chat States
   const [inputMessage, setInputMessage] = useState("");
@@ -271,7 +276,6 @@ export default function CombinedVideoChatPage({ params }: Props) {
     };
   }, [currentRoomId]);
 
-  // Direct In-Page Next Partner Function
   const handleNextStranger = () => {
     setIsSearchingNext(true);
     setIsConnected(false);
@@ -295,6 +299,26 @@ export default function CombinedVideoChatPage({ params }: Props) {
       gender: "any",
       isGuest: false,
     });
+  };
+
+  const handleToggleMute = () => {
+    if (localStream) {
+      localStream.getAudioTracks().forEach((track) => {
+        track.enabled = !track.enabled;
+        setIsMuted(!track.enabled);
+      });
+    }
+  };
+
+  const handleLeaveRoom = () => {
+    socket.emit("leave-room", currentRoomId);
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+    }
+    router.push("/");
   };
 
   const handleSendMessage = (e?: React.FormEvent) => {
@@ -331,21 +355,18 @@ export default function CombinedVideoChatPage({ params }: Props) {
   };
 
   return (
-    <div className="flex min-h-[100dvh] lg:h-screen w-full flex-col bg-[#F4F6FA] text-slate-800 font-sans">
+    <div className="flex h-[100dvh] w-full flex-col bg-[#F4F6FA] text-slate-800 font-sans overflow-hidden">
       {/* Header */}
-      <header className="flex h-14 lg:h-20 w-full items-center justify-between border-b border-gray-200 bg-white px-3 lg:px-6 shadow-xs shrink-0">
+      <header className="flex h-14 lg:h-16 w-full items-center justify-between border-b border-gray-200 bg-white px-3 lg:px-6 shadow-xs shrink-0 z-20">
         <div className="flex items-center gap-1.5 lg:gap-2">
           <Link href="/" className="flex shrink-0 items-center transition-transform duration-200 hover:scale-[1.02]">
             <Image
               src="/logo-header.png"
-              alt="vchatz logo"
-              width={260}
-              height={85}
+              alt="VChatz"
+              width={185}
+              height={65}
               priority
-              className="h-9 lg:h-16 w-auto object-contain"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
+              className="h-auto w-[130px] sm:w-[155px] lg:w-[180px]"
             />
           </Link>
         </div>
@@ -387,14 +408,14 @@ export default function CombinedVideoChatPage({ params }: Props) {
       </header>
 
       {/* Main Container */}
-      <div className="flex flex-1 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden p-3 lg:p-4 gap-1 lg:gap-2">
-        {/* Left Section */}
-        <div className="flex flex-1 flex-col gap-3 lg:gap-4">
-          
-          {/* Video Grid: Desktop = Side-by-Side (2 Cols), Mobile = Stacked (Vertical 2 Rows) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 flex-1">
+      <div className="flex flex-1 overflow-hidden p-2 lg:p-4 gap-2 relative">
+        {/* Left Section (Video and Controls Area) */}
+        <div className="flex flex-1 flex-col gap-2 lg:gap-3 overflow-y-auto">
+
+          {/* Video Grid */}
+          <div className={`grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-3 transition-all duration-300 ${isChatVisible ? 'h-[42vh] lg:h-[55vh]' : 'h-[64vh] lg:h-[72vh]'}`}>
             {/* Local Video */}
-            <div className="relative flex h-[220px] sm:h-[280px] lg:h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-black shadow-xs">
+            <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-black shadow-md">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -405,13 +426,36 @@ export default function CombinedVideoChatPage({ params }: Props) {
               <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-md bg-black/60 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md lg:hidden">
                 <span className="h-2 w-2 rounded-full bg-emerald-500"></span> You
               </div>
+
               <button className="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md">
                 <Info className="h-4 w-4" />
               </button>
+
+              {/* Professional Glassmorphism Mute & Leave Controls */}
+              <div className="absolute bottom-3 left-3 flex items-center gap-2.5 rounded-full bg-black/50 p-1.5 backdrop-blur-md border border-white/10 shadow-lg">
+                <button
+                  onClick={handleToggleMute}
+                  title={isMuted ? "Unmute" : "Mute"}
+                  className={`flex h-8 w-8 lg:h-9 lg:w-9 items-center justify-center rounded-full transition-all duration-200 ${isMuted
+                      ? "bg-rose-500 text-white shadow-md shadow-rose-500/30"
+                      : "bg-white/15 text-white hover:bg-white/25"
+                    }`}
+                >
+                  {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </button>
+
+                <button
+                  onClick={handleLeaveRoom}
+                  title="Leave Call"
+                  className="flex h-8 w-8 lg:h-9 lg:w-9 items-center justify-center rounded-full bg-rose-600 text-white hover:bg-rose-700 transition-all duration-200 shadow-md shadow-rose-600/30"
+                >
+                  <PhoneOff className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             {/* Remote Video Stream */}
-            <div className="relative flex h-[220px] sm:h-[280px] lg:h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-black shadow-xs">
+            <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-black shadow-md">
               {(!isConnected || isSearchingNext) && (
                 <div className="flex flex-col items-center justify-center text-center p-6">
                   <Loader2 className="h-10 w-10 animate-spin text-blue-500 mb-2" />
@@ -434,9 +478,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
               {isConnected && !isSearchingNext && (
                 <button
                   onClick={() => setIsFriendAdded(!isFriendAdded)}
-                  className={`hidden lg:flex absolute top-3 left-3 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold backdrop-blur-md transition ${
-                    isFriendAdded ? "bg-emerald-500 text-white" : "bg-black/50 text-white hover:bg-black/70"
-                  }`}
+                  className={`hidden lg:flex absolute top-3 left-3 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold backdrop-blur-md transition ${isFriendAdded ? "bg-emerald-500 text-white" : "bg-black/50 text-white hover:bg-black/70"
+                    }`}
                 >
                   {isFriendAdded ? (
                     <>
@@ -467,11 +510,11 @@ export default function CombinedVideoChatPage({ params }: Props) {
             </div>
           </div>
 
-          {/* Action Control Buttons (Desktop = 3 Equal Cards, Mobile = Image Match 3 Column Row) */}
-          <div className="grid grid-cols-3 gap-2 lg:gap-4">
-            <button className="flex items-center justify-between rounded-xl bg-white p-2.5 lg:p-3.5 shadow-xs border border-gray-100 hover:border-gray-200">
+          {/* Action Control Buttons */}
+          <div className="grid grid-cols-3 gap-2 lg:gap-3 shrink-0">
+            <button className="flex items-center justify-between rounded-xl bg-white p-2.5 lg:p-3 shadow-xs border border-gray-100 hover:border-gray-200">
               <div className="flex items-center gap-2 lg:gap-3">
-                <div className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                <div className="flex h-8 w-8 lg:h-9 lg:w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
                   <UserCheck className="h-4 w-4 lg:h-5 lg:w-5" />
                 </div>
                 <div className="text-left min-w-0">
@@ -481,9 +524,9 @@ export default function CombinedVideoChatPage({ params }: Props) {
               </div>
             </button>
 
-            <button className="flex items-center justify-between rounded-xl bg-white p-2.5 lg:p-3.5 shadow-xs border border-gray-100 hover:border-gray-200">
+            <button className="flex items-center justify-between rounded-xl bg-white p-2.5 lg:p-3 shadow-xs border border-gray-100 hover:border-gray-200">
               <div className="flex items-center gap-2 lg:gap-3">
-                <div className="flex h-8 w-8 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                <div className="flex h-8 w-8 lg:h-9 lg:w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
                   <Sliders className="h-4 w-4 lg:h-5 lg:w-5" />
                 </div>
                 <div className="text-left min-w-0">
@@ -496,7 +539,7 @@ export default function CombinedVideoChatPage({ params }: Props) {
             <button
               onClick={handleNextStranger}
               disabled={isSearchingNext}
-              className="flex items-center justify-center gap-2 lg:gap-2.5 rounded-xl bg-blue-600 p-2.5 lg:p-3.5 text-white font-bold shadow-md shadow-blue-500/20 hover:bg-blue-700 transition disabled:opacity-50 active:scale-[0.98]"
+              className="flex items-center justify-center gap-2 lg:gap-2.5 rounded-xl bg-blue-600 p-2.5 lg:p-3 text-white font-bold shadow-md shadow-blue-500/20 hover:bg-blue-700 transition disabled:opacity-50 active:scale-[0.98]"
             >
               {isSearchingNext ? <Loader2 className="h-4 w-4 lg:h-5 lg:w-5 animate-spin" /> : <Play className="h-4 w-4 lg:h-5 lg:w-5 fill-white" />}
               <div className="text-left min-w-0">
@@ -506,95 +549,73 @@ export default function CombinedVideoChatPage({ params }: Props) {
             </button>
           </div>
 
-          {/* Desktop Features Banner vs Mobile 18+ Exclusive Banner */}
-          <div className="hidden lg:flex items-center justify-between rounded-2xl bg-gradient-to-r from-purple-50/70 via-indigo-50/40 to-purple-50/70 p-4 shadow-xs border border-purple-100/80">
-            <div className="flex items-center gap-3.5 min-w-max">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-600 text-white shadow-md shadow-purple-500/20">
-                <Crown className="h-8 w-8 fill-white text-white" />
-              </div>
-              <div>
-                <h3 className="text-base font-black text-purple-900 tracking-tight">vchatz Plus</h3>
-                <p className="text-[11px] font-medium text-gray-500">
-                  Unlock premium features and take your experience to the next level!
-                </p>
-              </div>
+          {/* Designed Banner using plus-banner-img.png as background */}
+          <div className="relative w-full h-[70px] sm:h-[80px] lg:h-[90px] overflow-hidden rounded-2xl shadow-md shrink-0 bg-[#090314] flex items-center justify-between px-4">
+            {/* Background Image */}
+            <div className="absolute inset-0 z-0 opacity-80 pointer-events-none">
+              <Image
+                src="/logo-chat-boat.png"
+                alt="Banner Background"
+                fill
+                className="object-cover object-right"
+                priority
+              />
             </div>
 
-            <div className="flex items-center gap-6 mx-4">
-              <div className="flex flex-col items-center text-center">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100/60 text-emerald-600">
-                  <Shield className="h-4 w-4" />
-                </div>
-                <p className="text-[10px] font-semibold text-slate-700 mt-1 leading-tight">Ad-Free<br />Experience</p>
-              </div>
-
-              <div className="flex flex-col items-center text-center">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100/60 text-amber-500">
-                  <Zap className="h-4 w-4 fill-amber-500" />
-                </div>
-                <p className="text-[10px] font-semibold text-slate-700 mt-1 leading-tight">Priority<br />Matching</p>
-              </div>
-
-              <div className="flex flex-col items-center text-center">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100/60 text-indigo-600">
-                  <MapPin className="h-4 w-4" />
-                </div>
-                <p className="text-[10px] font-semibold text-slate-700 mt-1 leading-tight">Gender & Location<br />Filter</p>
-              </div>
-
-              <div className="flex flex-col items-center text-center">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-100/60 text-orange-600">
-                  <MessageSquare className="h-4 w-4 fill-orange-600" />
-                </div>
-                <p className="text-[10px] font-semibold text-slate-700 mt-1 leading-tight">Unlimited<br />Chat Time</p>
-              </div>
-            </div>
-
-            <button className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-purple-500/20 hover:opacity-95 transition shrink-0">
-              <Crown className="h-4 w-4 fill-white" /> Upgrade to Plus
-            </button>
-          </div>
-
-          {/* Mobile Exclusive 18+ Ad Banner */}
-          <div className="lg:hidden relative overflow-hidden rounded-xl bg-gradient-to-r from-slate-900 via-purple-950 to-slate-900 p-3 text-white flex items-center justify-between border border-purple-900/50">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-pink-600 text-[10px] font-black border-2 border-white">
+            {/* Left Content: 18+ Badge and Texts */}
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center bg-pink-600 text-white font-black text-xs sm:text-sm rounded-lg shadow-lg">
                 18+
               </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-pink-400">Exclusive Content</p>
-                <p className="text-sm font-black text-white">TRY NOW!</p>
+              <div className="flex flex-col justify-center">
+                <span className="text-[9px] sm:text-[10px] font-extrabold tracking-widest text-pink-300 uppercase drop-shadow-xs">
+                  EXCLUSIVE CONTENT
+                </span>
+                <span className="text-sm sm:text-lg font-black text-pink-500 tracking-wide drop-shadow-md leading-tight">
+                  TRY NOW!
+                </span>
               </div>
             </div>
-            <button className="rounded-lg bg-pink-600 px-3 py-1.5 text-xs font-bold text-white shadow-md hover:bg-pink-700 transition">
-              JOIN NOW
-            </button>
+
+            {/* Right Content: Join Now Button */}
+            <div className="relative z-10">
+              <button className="rounded-xl bg-pink-600 px-4 sm:px-6 py-2 text-xs sm:text-sm font-bold text-white shadow-lg shadow-pink-600/40 hover:bg-pink-700 active:scale-95 transition">
+                JOIN NOW
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Right Section Chat Box (Desktop Side-bar, Mobile Drawer) */}
+        {/* Right Section Chat Box (Desktop Sidebar / Mobile Drawer) */}
         <div className={`
-          lg:relative lg:flex lg:w-64 xl:w-72 lg:h-auto lg:rounded-2xl lg:shadow-xs lg:border lg:border-gray-100 lg:bg-white lg:flex-col
-          ${isMobileChatOpen ? 'fixed inset-x-0 bottom-0 z-50 h-[70vh] bg-white rounded-t-2xl shadow-2xl flex flex-col border-t border-gray-200' : 'hidden lg:flex'}
+          bg-white shadow-xl transition-all duration-300 z-30 flex flex-col
+          lg:relative lg:w-80 lg:rounded-2xl lg:border lg:border-gray-100 lg:shadow-xs
+          ${isChatVisible
+            ? 'flex fixed inset-x-0 bottom-0 h-[50vh] rounded-t-3xl border-t border-gray-200 lg:h-auto'
+            : 'hidden'}
         `}>
-          <div className="flex items-center justify-between border-b border-gray-100 p-3 lg:p-4">
+          <div className="flex items-center justify-between border-b border-gray-100 p-3 shrink-0">
             <h2 className="text-sm font-bold text-slate-800">Chat</h2>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
                 <span className="h-2 w-2 rounded-full bg-emerald-500"></span> Online
               </div>
-              <button onClick={() => setIsMobileChatOpen(false)} className="lg:hidden p-1 text-slate-400 hover:text-slate-600">
+              <button
+                onClick={() => setIsChatVisible(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 transition"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
           </div>
 
-          <div className="mx-3 mt-3 flex gap-2 rounded-xl bg-blue-50/60 p-2.5 text-xs text-blue-900 border border-blue-100">
+          <div className="mx-3 mt-2 flex gap-2 rounded-xl bg-blue-50/60 p-2 text-xs text-blue-900 border border-blue-100 shrink-0">
             <ShieldCheck className="h-4 w-4 shrink-0 text-blue-600" />
-            <p className="text-[11px] font-medium leading-tight">Be kind and respectful. Inappropriate behavior will lead to a ban.</p>
+            <p className="text-[10px] font-medium leading-tight">Be kind and respectful. Inappropriate behavior will lead to a ban.</p>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {/* Chat Messages Scrolling Container */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-0">
             {messages.map((msg) => {
               const isMe = msg.sender === socket.id;
 
@@ -607,7 +628,7 @@ export default function CombinedVideoChatPage({ params }: Props) {
                       </button>
                     )}
 
-                    <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-xs font-medium ${isMe ? "bg-blue-600 text-white rounded-br-none" : "bg-gray-100 text-slate-800 rounded-bl-none"}`}>
+                    <div className={`max-w-[85%] rounded-2xl px-3 py-1.5 text-xs font-medium ${isMe ? "bg-blue-600 text-white rounded-br-none" : "bg-gray-100 text-slate-800 rounded-bl-none"}`}>
                       {msg.message}
                     </div>
 
@@ -631,7 +652,7 @@ export default function CombinedVideoChatPage({ params }: Props) {
             <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleSendMessage} className="p-2.5 border-t border-gray-100 flex items-center gap-1.5 flex-nowrap bg-white">
+          <form onSubmit={handleSendMessage} className="p-2 border-t border-gray-100 flex items-center gap-1.5 flex-nowrap bg-white shrink-0">
             <button type="button" onClick={() => setShowEmojiPicker((p) => !p)} className="text-gray-400 hover:text-gray-600 p-1 shrink-0">
               <Smile className="h-4 w-4" />
             </button>
@@ -646,31 +667,28 @@ export default function CombinedVideoChatPage({ params }: Props) {
               <Send className="h-3 w-3" />
             </button>
           </form>
-        </div> 
+        </div>
       </div>
 
-      {/* Floating Chat Icon for Mobile Screens */}
-      <button 
-        onClick={() => setIsMobileChatOpen(!isMobileChatOpen)}
-        className="lg:hidden fixed bottom-12 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl hover:bg-blue-700 transition"
+      {/* Floating Chat Icon to toggle chat visibility */}
+      <button
+        onClick={() => setIsChatVisible(!isChatVisible)}
+        className="fixed bottom-12 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-2xl hover:bg-blue-700 active:scale-95 transition"
       >
         <MessageCircle className="h-6 w-6" />
       </button>
 
       {/* Footer */}
-      <footer className="flex flex-col sm:flex-row h-auto lg:h-8 w-full items-center justify-between border-t border-gray-200 bg-white py-2 lg:py-0 px-4 lg:px-6 text-[10px] text-gray-400 gap-1.5 lg:gap-0 shrink-0">
+      <footer className="flex h-7 w-full items-center justify-between border-t border-gray-200 bg-white px-4 text-[10px] text-gray-400 shrink-0 z-20">
         <p>© 2026 Vchatz. All rights reserved.</p>
-        <div className="flex gap-3 lg:gap-4">
+        <div className="flex gap-4">
           <a href="#" className="hover:underline">Terms of Service</a>
-          <span className="lg:hidden">|</span>
+          <span className="hidden lg:inline">|</span>
           <a href="#" className="hover:underline">Privacy Policy</a>
           <span className="hidden lg:inline">|</span>
-          <a href="#" className="hidden lg:inline hover:underline">Community Guidelines</a>
-          <span className="lg:hidden">|</span>
           <a href="#" className="hover:underline">Contact Us</a>
         </div>
       </footer>
-
     </div>
   );
 }
