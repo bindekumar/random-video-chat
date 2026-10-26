@@ -22,18 +22,14 @@ import {
   Plus,
   Info,
   User,
-  Shield,
-  Zap,
-  MapPin,
-  MessageSquare,
-  UserPlus,
-  Eye,
-  EyeOff,
+  Video,
+  VideoOff,
   MessageCircle,
   X,
   PhoneOff,
   Mic,
   MicOff,
+  UserPlus,
 } from "lucide-react";
 import { socket } from "@/lib/socket";
 import { SOCKET_EVENTS } from "@/servers/socket/events";
@@ -88,6 +84,7 @@ export default function CombinedVideoChatPage({ params }: Props) {
   // Mute & Chat Toggle States
   const [isMuted, setIsMuted] = useState(false);
   const [isChatVisible, setIsChatVisible] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Chat States
   const [inputMessage, setInputMessage] = useState("");
@@ -355,9 +352,9 @@ export default function CombinedVideoChatPage({ params }: Props) {
   };
 
   return (
-    <div className="flex h-[100dvh] w-full flex-col bg-[#F4F6FA] text-slate-800 font-sans overflow-hidden">
-      {/* Header */}
-      <header className="flex h-14 lg:h-16 w-full items-center justify-between border-b border-gray-200 bg-white px-3 lg:px-6 shadow-xs shrink-0 z-20">
+    <div className="flex min-h-[100dvh] w-full flex-col bg-[#F8FAFC] text-slate-800 font-sans overflow-x-hidden">
+      {/* Premium Header */}
+      <header className="flex h-14 lg:h-16 w-full items-center justify-between border-b border-slate-200/80 bg-white/90 backdrop-blur-md px-3 lg:px-6 shadow-sm shrink-0 z-50 sticky top-0">
         <div className="flex items-center gap-1.5 lg:gap-2">
           <Link href="/" className="flex shrink-0 items-center transition-transform duration-200 hover:scale-[1.02]">
             <Image
@@ -371,51 +368,107 @@ export default function CombinedVideoChatPage({ params }: Props) {
           </Link>
         </div>
 
-        <div className="flex items-center gap-1.5 lg:gap-4">
-          <button className="flex items-center gap-1 lg:gap-1.5 rounded-md lg:rounded-full bg-amber-500 lg:bg-blue-50/50 border-none lg:border lg:border-blue-200 px-2 lg:px-4 py-1 lg:py-1.5 text-[10px] lg:text-xs font-bold lg:font-semibold text-white lg:text-blue-600 hover:bg-amber-600 lg:hover:bg-blue-100">
-            <Crown className="h-3 w-3 fill-white lg:hidden" />
-            <Star className="hidden lg:block h-3.5 w-3.5 fill-blue-600" />
-            <span className="lg:hidden">PLUS</span>
-            <span className="hidden lg:inline">Free</span>
+        {/* DESKTOP OPTIONS - Gradient Modern Buttons */}
+        <div className="hidden lg:flex items-center gap-3">
+          <button className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 px-4 py-1.5 text-xs font-bold text-white shadow-md shadow-blue-500/20 hover:shadow-lg hover:scale-105 transition-all">
+            <Star className="h-3.5 w-3.5 fill-white text-white" />
+            <span>Free</span>
           </button>
 
-          <button className="flex items-center gap-1 lg:gap-1.5 rounded-md lg:rounded-full bg-orange-500 lg:bg-purple-100 px-2 lg:px-4 py-1 lg:py-1.5 text-[10px] lg:text-xs font-bold lg:font-semibold text-white lg:text-purple-700 hover:bg-orange-600 lg:hover:bg-purple-200">
-            <Star className="h-3 w-3 fill-white lg:hidden" />
-            <Crown className="hidden lg:block h-3.5 w-3.5 fill-purple-700" />
-            <span className="lg:hidden">FREE</span>
-            <span className="hidden lg:inline">Plus</span>
+          <button className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 via-purple-600 to-pink-600 px-4 py-1.5 text-xs font-bold text-white shadow-md shadow-purple-500/20 hover:shadow-lg hover:scale-105 transition-all">
+            <Crown className="h-3.5 w-3.5 fill-white text-white" />
+            <span>Plus</span>
           </button>
 
-          <div className="flex items-center gap-1 lg:gap-2 rounded-full border border-amber-200 bg-amber-50 px-2 lg:px-3 py-0.5 lg:py-1.5 text-xs font-bold text-amber-700">
-            <Coins className="h-3.5 w-3.5 lg:h-4 lg:w-4 fill-amber-500 text-amber-500 shrink-0" />
-            <span className="hidden lg:inline">Coins</span>
-            <span className="font-extrabold text-slate-800 text-[11px] lg:text-xs">120</span>
-            <button className="flex h-3.5 w-3.5 lg:h-4 lg:w-4 items-center justify-center rounded-full bg-amber-200 text-amber-800 hover:bg-amber-300">
-              <Plus className="h-2.5 w-2.5 lg:h-3 lg:w-3" />
+          <div className="flex items-center gap-2 rounded-full border border-amber-300/60 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-1 text-xs font-bold text-amber-900 shadow-sm">
+            <Coins className="h-4 w-4 fill-amber-500 text-amber-500 shrink-0" />
+            <span>Coins</span>
+            <span className="font-extrabold text-slate-900 text-xs bg-amber-200/70 px-1.5 py-0.5 rounded-full">120</span>
+            <button className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-xs hover:scale-110 transition">
+              <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
 
-          <div className="flex items-center gap-2 border-l pl-2 lg:pl-4 border-gray-200">
-            <div className="flex h-7 w-7 lg:h-8 lg:w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
-              <User className="h-4 w-4" />
+          <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md">
+              <User className="h-4.5 w-4.5" />
             </div>
-            <div className="hidden lg:block text-left">
-              <p className="text-xs font-bold leading-tight">Profile</p>
-              <p className="text-[10px] text-gray-400">ID: VCH12345</p>
+            <div className="text-left">
+              <p className="text-xs font-bold leading-tight text-slate-900">Profile</p>
+              <p className="text-[10px] text-indigo-500 font-semibold">ID: VCH12345</p>
             </div>
           </div>
         </div>
+
+        {/* MOBILE PROFILE TOGGLE BUTTON */}
+        <button
+          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+          aria-expanded={isMobileMenuOpen}
+          aria-controls="mobile-menu"
+          aria-label="Toggle Profile Menu"
+          className="flex h-10 w-10 items-center justify-center rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-purple-50 text-indigo-700 shadow-xs hover:shadow transition-all active:scale-95 lg:hidden"
+        >
+          {isMobileMenuOpen ? (
+            <X className="h-5 w-5" />
+          ) : (
+            <User className="h-5 w-5" />
+          )}
+        </button>
       </header>
 
+      {/* MOBILE MENU DRAWER (OPENS ON PROFILE CLICK) */}
+      <div
+        id="mobile-menu"
+        className={`absolute top-14 left-0 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-xl px-5 py-5 shadow-2xl transition-all duration-300 ease-in-out lg:hidden z-40 ${
+          isMobileMenuOpen
+            ? "translate-y-0 opacity-100 pointer-events-auto block"
+            : "-translate-y-4 opacity-0 pointer-events-none hidden"
+        }`}
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md">
+              <User className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-800">My Profile</p>
+              <p className="text-xs text-indigo-500 font-semibold">ID: VCH12345</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2.5 text-xs font-bold text-amber-900 shadow-sm">
+            <div className="flex items-center gap-2">
+              <Coins className="h-4 w-4 fill-amber-500 text-amber-500 shrink-0" />
+              <span>Coins Balance: <strong className="text-slate-900 bg-amber-200/70 px-2 py-0.5 rounded-full ml-1">120</strong></span>
+            </div>
+            <button className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-md hover:scale-105 transition">
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            <button className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/20 active:scale-95 transition">
+              <Star className="h-3.5 w-3.5 fill-white" />
+              <span>Free Plan</span>
+            </button>
+
+            <button className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-2.5 text-xs font-bold text-white shadow-md shadow-purple-500/20 active:scale-95 transition">
+              <Crown className="h-3.5 w-3.5 fill-white" />
+              <span>Plus Plan</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Main Container */}
-      <div className="flex flex-1 overflow-hidden p-2 lg:p-4 gap-2 relative">
+      <div className="flex flex-1 overflow-y-auto p-2 lg:p-4 gap-2 relative">
         {/* Left Section (Video and Controls Area) */}
-        <div className="flex flex-1 flex-col gap-2 lg:gap-3 overflow-y-auto">
+        <div className="flex flex-1 flex-col gap-2 lg:gap-3">
 
           {/* Video Grid */}
           <div className={`grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-3 transition-all duration-300 ${isChatVisible ? 'h-[42vh] lg:h-[55vh]' : 'h-[64vh] lg:h-[72vh]'}`}>
             {/* Local Video */}
-            <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-black shadow-md">
+            <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-slate-950 shadow-lg border border-slate-800">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -423,44 +476,47 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 muted
                 className="h-full w-full object-cover block"
               />
-              <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-md bg-black/60 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md lg:hidden">
-                <span className="h-2 w-2 rounded-full bg-emerald-500"></span> You
+              <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-slate-900/80 border border-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span> You
               </div>
 
-              <button className="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md">
+              <button className="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-full bg-slate-900/60 border border-white/10 text-white backdrop-blur-md hover:bg-slate-900/80 transition">
                 <Info className="h-4 w-4" />
               </button>
 
-              {/* Professional Glassmorphism Mute & Leave Controls */}
-              <div className="absolute bottom-3 left-3 flex items-center gap-2.5 rounded-full bg-black/50 p-1.5 backdrop-blur-md border border-white/10 shadow-lg">
+              {/* Redesigned Premium Glassmorphism Floating Mute & Leave Controls */}
+              <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-slate-950/80 p-1.5 backdrop-blur-xl border border-white/15 shadow-2xl">
                 <button
                   onClick={handleToggleMute}
                   title={isMuted ? "Unmute" : "Mute"}
-                  className={`flex h-8 w-8 lg:h-9 lg:w-9 items-center justify-center rounded-full transition-all duration-200 ${isMuted
-                      ? "bg-rose-500 text-white shadow-md shadow-rose-500/30"
-                      : "bg-white/15 text-white hover:bg-white/25"
-                    }`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-300 ${
+                    isMuted
+                      ? "bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-lg shadow-rose-600/30"
+                      : "bg-white/10 text-white hover:bg-white/20"
+                  }`}
                 >
-                  {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  {isMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                  <span className="hidden sm:inline">{isMuted ? "Muted" : "Mute"}</span>
                 </button>
 
                 <button
                   onClick={handleLeaveRoom}
                   title="Leave Call"
-                  className="flex h-8 w-8 lg:h-9 lg:w-9 items-center justify-center rounded-full bg-rose-600 text-white hover:bg-rose-700 transition-all duration-200 shadow-md shadow-rose-600/30"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-red-600 via-rose-600 to-pink-600 text-white text-xs font-bold hover:brightness-110 transition-all shadow-lg shadow-rose-600/30"
                 >
-                  <PhoneOff className="h-4 w-4" />
+                  <PhoneOff className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Leave</span>
                 </button>
               </div>
             </div>
 
             {/* Remote Video Stream */}
-            <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-black shadow-md">
+            <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-slate-950 shadow-lg border border-slate-800">
               {(!isConnected || isSearchingNext) && (
                 <div className="flex flex-col items-center justify-center text-center p-6">
-                  <Loader2 className="h-10 w-10 animate-spin text-blue-500 mb-2" />
+                  <Loader2 className="h-10 w-10 animate-spin text-indigo-500 mb-2" />
                   <p className="text-sm font-semibold text-white">Finding your next partner...</p>
-                  <p className="text-xs text-gray-400 mt-1 capitalize">{connectionStatus}</p>
+                  <p className="text-xs text-slate-400 mt-1 capitalize">{connectionStatus}</p>
                 </div>
               )}
 
@@ -471,15 +527,18 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 className={`h-full w-full object-cover ${!isConnected || isSearchingNext || hideRemoteVideo ? "hidden" : "block"}`}
               />
 
-              <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-md bg-black/60 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md lg:hidden">
-                <span className="h-2 w-2 rounded-full bg-emerald-500"></span> Partner
+              <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-slate-900/80 border border-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span> Partner
               </div>
 
               {isConnected && !isSearchingNext && (
                 <button
                   onClick={() => setIsFriendAdded(!isFriendAdded)}
-                  className={`hidden lg:flex absolute top-3 left-3 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold backdrop-blur-md transition ${isFriendAdded ? "bg-emerald-500 text-white" : "bg-black/50 text-white hover:bg-black/70"
-                    }`}
+                  className={`hidden lg:flex absolute top-3 left-3 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold backdrop-blur-md transition shadow-md ${
+                    isFriendAdded
+                      ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white"
+                      : "bg-slate-900/70 border border-white/15 text-white hover:bg-slate-900/90"
+                  }`}
                 >
                   {isFriendAdded ? (
                     <>
@@ -493,65 +552,76 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 </button>
               )}
 
-              <button className="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md">
+              <button className="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-full bg-slate-900/60 border border-white/10 text-white backdrop-blur-md hover:bg-slate-900/80 transition">
                 <Info className="h-4 w-4" />
               </button>
-
-              {/* Eye Icon Control */}
-              <div className="absolute bottom-3 right-3 lg:bottom-4 lg:left-1/2 lg:right-auto lg:-translate-x-1/2 flex gap-3 rounded-full bg-black/40 p-1 lg:p-1.5 backdrop-blur-md">
-                <button
-                  onClick={() => setHideRemoteVideo((prev) => !prev)}
-                  title={hideRemoteVideo ? "Show Video" : "Hide Video"}
-                  className="flex h-8 w-8 lg:h-10 lg:w-10 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition"
-                >
-                  {hideRemoteVideo ? <EyeOff className="h-4 w-4 lg:h-5 lg:w-5" /> : <Eye className="h-4 w-4 lg:h-5 lg:w-5" />}
-                </button>
-              </div>
             </div>
           </div>
 
-          {/* Action Control Buttons */}
-          <div className="grid grid-cols-3 gap-2 lg:gap-3 shrink-0">
-            <button className="flex items-center justify-between rounded-xl bg-white p-2.5 lg:p-3 shadow-xs border border-gray-100 hover:border-gray-200">
-              <div className="flex items-center gap-2 lg:gap-3">
-                <div className="flex h-8 w-8 lg:h-9 lg:w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                  <UserCheck className="h-4 w-4 lg:h-5 lg:w-5" />
+          {/* Action Control Buttons (Ultra-Premium Responsive Colors) */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3 shrink-0">
+            {/* Gender Filter Button - Teal Gradient */}
+            <button className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 p-3 lg:p-3.5 text-white shadow-md shadow-teal-500/20 hover:scale-[1.02] hover:shadow-lg transition-all border border-teal-400/30">
+              <div className="flex items-center gap-2.5 lg:gap-3 min-w-0">
+                <div className="flex h-9 w-9 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm text-white">
+                  <UserCheck className="h-4.5 w-4.5 lg:h-5 lg:w-5" />
                 </div>
                 <div className="text-left min-w-0">
-                  <p className="text-xs lg:text-sm font-bold text-blue-600 truncate">Both</p>
-                  <p className="text-[10px] lg:text-xs text-gray-400 truncate">All Gender</p>
+                  <p className="text-xs lg:text-sm font-extrabold truncate">Both</p>
+                  <p className="text-[10px] lg:text-xs text-teal-100 font-medium truncate">All Gender</p>
                 </div>
               </div>
             </button>
 
-            <button className="flex items-center justify-between rounded-xl bg-white p-2.5 lg:p-3 shadow-xs border border-gray-100 hover:border-gray-200">
-              <div className="flex items-center gap-2 lg:gap-3">
-                <div className="flex h-8 w-8 lg:h-9 lg:w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                  <Sliders className="h-4 w-4 lg:h-5 lg:w-5" />
+            {/* Settings Filter Button - Violet Gradient */}
+            <button className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 p-3 lg:p-3.5 text-white shadow-md shadow-purple-600/20 hover:scale-[1.02] hover:shadow-lg transition-all border border-purple-400/30">
+              <div className="flex items-center gap-2.5 lg:gap-3 min-w-0">
+                <div className="flex h-9 w-9 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm text-white">
+                  <Sliders className="h-4.5 w-4.5 lg:h-5 lg:w-5" />
                 </div>
                 <div className="text-left min-w-0">
-                  <p className="text-xs lg:text-sm font-bold text-slate-800 truncate">Settings</p>
-                  <p className="text-[10px] lg:text-xs text-gray-400 truncate">Location Filter</p>
+                  <p className="text-xs lg:text-sm font-extrabold truncate">Settings</p>
+                  <p className="text-[10px] lg:text-xs text-indigo-100 font-medium truncate">Location Filter</p>
                 </div>
               </div>
             </button>
 
+            {/* Video Hide/Show Toggle - Amber/Orange Gradient */}
+            <button
+              onClick={() => setHideRemoteVideo((prev) => !prev)}
+              className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 p-3 lg:p-3.5 text-white shadow-md shadow-amber-500/20 hover:scale-[1.02] hover:shadow-lg transition-all border border-amber-400/30"
+            >
+              <div className="flex items-center gap-2.5 lg:gap-3 min-w-0">
+                <div className="flex h-9 w-9 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm text-white">
+                  {hideRemoteVideo ? <VideoOff className="h-4.5 w-4.5 lg:h-5 lg:w-5" /> : <Video className="h-4.5 w-4.5 lg:h-5 lg:w-5" />}
+                </div>
+                <div className="text-left min-w-0">
+                  <p className="text-xs lg:text-sm font-extrabold truncate">
+                    {hideRemoteVideo ? "Show Video" : "Hide Video"}
+                  </p>
+                  <p className="text-[10px] lg:text-xs text-amber-100 font-medium truncate">
+                    {hideRemoteVideo ? "Video Hidden" : "Video Visible"}
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            {/* Start / Find Partner Button - Bright Blue/Indigo Gradient */}
             <button
               onClick={handleNextStranger}
               disabled={isSearchingNext}
-              className="flex items-center justify-center gap-2 lg:gap-2.5 rounded-xl bg-blue-600 p-2.5 lg:p-3 text-white font-bold shadow-md shadow-blue-500/20 hover:bg-blue-700 transition disabled:opacity-50 active:scale-[0.98]"
+              className="flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-3 lg:p-3.5 text-white font-extrabold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-[1.02] transition-all disabled:opacity-50 active:scale-[0.98] border border-indigo-400/30"
             >
-              {isSearchingNext ? <Loader2 className="h-4 w-4 lg:h-5 lg:w-5 animate-spin" /> : <Play className="h-4 w-4 lg:h-5 lg:w-5 fill-white" />}
+              {isSearchingNext ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5 fill-white text-white" />}
               <div className="text-left min-w-0">
-                <p className="text-xs lg:text-sm font-bold leading-tight truncate">{isSearchingNext ? "Matching..." : "Start"}</p>
-                <p className="text-[9px] lg:text-xs text-blue-200 font-normal truncate">Find Random Partner</p>
+                <p className="text-xs lg:text-sm font-extrabold leading-tight truncate">{isSearchingNext ? "Matching..." : "Start"}</p>
+                <p className="text-[9px] lg:text-xs text-indigo-100 font-medium truncate">Find Partner</p>
               </div>
             </button>
           </div>
 
-          {/* Designed Banner using plus-banner-img.png as background */}
+          {/* Designed Banner */}
           <div className="relative w-full h-[70px] sm:h-[80px] lg:h-[90px] overflow-hidden rounded-2xl shadow-md shrink-0 bg-[#090314] flex items-center justify-between px-4">
-            {/* Background Image */}
             <div className="absolute inset-0 z-0 opacity-80 pointer-events-none">
               <Image
                 src="/logo-chat-boat.png"
@@ -562,7 +632,6 @@ export default function CombinedVideoChatPage({ params }: Props) {
               />
             </div>
 
-            {/* Left Content: 18+ Badge and Texts */}
             <div className="relative z-10 flex items-center gap-3">
               <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center bg-pink-600 text-white font-black text-xs sm:text-sm rounded-lg shadow-lg">
                 18+
@@ -577,7 +646,6 @@ export default function CombinedVideoChatPage({ params }: Props) {
               </div>
             </div>
 
-            {/* Right Content: Join Now Button */}
             <div className="relative z-10">
               <button className="rounded-xl bg-pink-600 px-4 sm:px-6 py-2 text-xs sm:text-sm font-bold text-white shadow-lg shadow-pink-600/40 hover:bg-pink-700 active:scale-95 transition">
                 JOIN NOW
@@ -586,19 +654,21 @@ export default function CombinedVideoChatPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Right Section Chat Box (Desktop Sidebar / Mobile Drawer) */}
+        {/* Right Section Chat Box */}
         <div className={`
-          bg-white shadow-xl transition-all duration-300 z-30 flex flex-col
-          lg:relative lg:w-80 lg:rounded-2xl lg:border lg:border-gray-100 lg:shadow-xs
+          bg-white shadow-2xl transition-all duration-300 z-30 flex flex-col
+          lg:relative lg:w-80 lg:rounded-2xl lg:border lg:border-slate-200/80
           ${isChatVisible
-            ? 'flex fixed inset-x-0 bottom-0 h-[50vh] rounded-t-3xl border-t border-gray-200 lg:h-auto'
+            ? 'flex fixed inset-x-0 bottom-0 h-[50vh] rounded-t-3xl border-t border-slate-200 lg:h-auto'
             : 'hidden'}
         `}>
-          <div className="flex items-center justify-between border-b border-gray-100 p-3 shrink-0">
-            <h2 className="text-sm font-bold text-slate-800">Chat</h2>
+          <div className="flex items-center justify-between border-b border-slate-100 p-3 shrink-0">
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+              <MessageCircle className="h-4 w-4 text-indigo-600" /> Chat
+            </h2>
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
-                <span className="h-2 w-2 rounded-full bg-emerald-500"></span> Online
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> Online
               </div>
               <button
                 onClick={() => setIsChatVisible(false)}
@@ -609,12 +679,11 @@ export default function CombinedVideoChatPage({ params }: Props) {
             </div>
           </div>
 
-          <div className="mx-3 mt-2 flex gap-2 rounded-xl bg-blue-50/60 p-2 text-xs text-blue-900 border border-blue-100 shrink-0">
-            <ShieldCheck className="h-4 w-4 shrink-0 text-blue-600" />
+          <div className="mx-3 mt-2 flex gap-2 rounded-xl bg-indigo-50/70 p-2 text-xs text-indigo-900 border border-indigo-100 shrink-0">
+            <ShieldCheck className="h-4 w-4 shrink-0 text-indigo-600" />
             <p className="text-[10px] font-medium leading-tight">Be kind and respectful. Inappropriate behavior will lead to a ban.</p>
           </div>
 
-          {/* Chat Messages Scrolling Container */}
           <div className="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-0">
             {messages.map((msg) => {
               const isMe = msg.sender === socket.id;
@@ -628,7 +697,7 @@ export default function CombinedVideoChatPage({ params }: Props) {
                       </button>
                     )}
 
-                    <div className={`max-w-[85%] rounded-2xl px-3 py-1.5 text-xs font-medium ${isMe ? "bg-blue-600 text-white rounded-br-none" : "bg-gray-100 text-slate-800 rounded-bl-none"}`}>
+                    <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-xs font-medium shadow-xs ${isMe ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-br-none" : "bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200/60"}`}>
                       {msg.message}
                     </div>
 
@@ -643,7 +712,7 @@ export default function CombinedVideoChatPage({ params }: Props) {
                       </div>
                     )}
                   </div>
-                  <span className="text-[9px] text-gray-400 mt-0.5 px-1">
+                  <span className="text-[9px] text-slate-400 mt-0.5 px-1 font-medium">
                     {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
@@ -652,8 +721,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
             <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleSendMessage} className="p-2 border-t border-gray-100 flex items-center gap-1.5 flex-nowrap bg-white shrink-0">
-            <button type="button" onClick={() => setShowEmojiPicker((p) => !p)} className="text-gray-400 hover:text-gray-600 p-1 shrink-0">
+          <form onSubmit={handleSendMessage} className="p-2 border-t border-slate-100 flex items-center gap-1.5 flex-nowrap bg-white shrink-0">
+            <button type="button" onClick={() => setShowEmojiPicker((p) => !p)} className="text-slate-400 hover:text-indigo-600 p-1 shrink-0 transition">
               <Smile className="h-4 w-4" />
             </button>
             <input
@@ -661,25 +730,25 @@ export default function CombinedVideoChatPage({ params }: Props) {
               placeholder="Type a message..."
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              className="min-w-0 flex-1 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-slate-800 border border-gray-200 focus:outline-none focus:border-blue-500"
+              className="min-w-0 flex-1 rounded-full bg-slate-50 px-3.5 py-1.5 text-xs text-slate-800 border border-slate-200 focus:outline-none focus:border-indigo-500 transition"
             />
-            <button type="submit" disabled={!inputMessage.trim()} className="flex h-7 w-7 min-w-[28px] items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 shrink-0">
+            <button type="submit" disabled={!inputMessage.trim()} className="flex h-7 w-7 min-w-[28px] items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:shadow-md disabled:opacity-40 shrink-0 transition">
               <Send className="h-3 w-3" />
             </button>
           </form>
         </div>
       </div>
 
-      {/* Floating Chat Icon to toggle chat visibility */}
+      {/* Floating Chat Icon */}
       <button
         onClick={() => setIsChatVisible(!isChatVisible)}
-        className="fixed bottom-12 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-2xl hover:bg-blue-700 active:scale-95 transition"
+        className="fixed bottom-12 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all"
       >
         <MessageCircle className="h-6 w-6" />
       </button>
 
       {/* Footer */}
-      <footer className="flex h-7 w-full items-center justify-between border-t border-gray-200 bg-white px-4 text-[10px] text-gray-400 shrink-0 z-20">
+      <footer className="flex h-7 w-full items-center justify-between border-t border-slate-200 bg-white px-4 text-[10px] text-slate-400 shrink-0 z-20">
         <p>© 2026 Vchatz. All rights reserved.</p>
         <div className="flex gap-4">
           <a href="#" className="hover:underline">Terms of Service</a>
