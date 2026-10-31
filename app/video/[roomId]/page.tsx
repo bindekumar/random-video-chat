@@ -20,10 +20,9 @@ import {
   Crown,
   Coins,
   Plus,
-  Info,
   User,
-  Eye,
-  EyeOff,
+  Video,
+  VideoOff,
   MessageCircle,
   X,
   Square,
@@ -74,6 +73,7 @@ export default function CombinedVideoChatPage({ params }: Props) {
   const pendingCandidates = useRef<RTCIceCandidateInit[]>([]);
 
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<string>("Initializing...");
   const [isConnected, setIsConnected] = useState(false);
   const [isFriendAdded, setIsFriendAdded] = useState(false);
@@ -100,6 +100,25 @@ export default function CombinedVideoChatPage({ params }: Props) {
     scrollToBottom();
   }, [messages]);
 
+  const safePlayVideo = (videoElement: HTMLVideoElement | null) => {
+    if (!videoElement) return;
+    const playPromise = videoElement.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((error) => {
+        if (error.name !== "AbortError") {
+          console.warn("Video play interrupted or failed:", error);
+        }
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+      safePlayVideo(remoteVideoRef.current);
+    }
+  }, [remoteStream, isConnected]);
+
   const createPeerConnection = (stream: MediaStream | null) => {
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
@@ -114,7 +133,10 @@ export default function CombinedVideoChatPage({ params }: Props) {
 
     pc.oniceconnectionstatechange = () => {
       setConnectionStatus(pc.iceConnectionState);
-      if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
+      if (
+        pc.iceConnectionState === "connected" ||
+        pc.iceConnectionState === "completed"
+      ) {
         setIsConnected(true);
         setIsSearchingNext(false);
       } else if (
@@ -127,11 +149,12 @@ export default function CombinedVideoChatPage({ params }: Props) {
     };
 
     pc.ontrack = (event) => {
-      if (remoteVideoRef.current && event.streams[0]) {
-        remoteVideoRef.current.srcObject = event.streams[0];
-        remoteVideoRef.current.play().catch((err) => {
-          if (err.name !== "AbortError") console.error("Video play error:", err);
-        });
+      if (event.streams && event.streams[0]) {
+        setRemoteStream(event.streams[0]);
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = event.streams[0];
+          safePlayVideo(remoteVideoRef.current);
+        }
         setIsConnected(true);
         setIsSearchingNext(false);
       }
@@ -139,7 +162,10 @@ export default function CombinedVideoChatPage({ params }: Props) {
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        socket.emit("ice-candidate", { roomId: currentRoomId, candidate: event.candidate });
+        socket.emit("ice-candidate", {
+          roomId: currentRoomId,
+          candidate: event.candidate,
+        });
       }
     };
 
@@ -158,10 +184,15 @@ export default function CombinedVideoChatPage({ params }: Props) {
           return;
         }
 
-        await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.offer));
+        await peerConnectionRef.current.setRemoteDescription(
+          new RTCSessionDescription(data.offer)
+        );
         while (pendingCandidates.current.length) {
           const candidate = pendingCandidates.current.shift();
-          if (candidate) await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+          if (candidate)
+            await peerConnectionRef.current.addIceCandidate(
+              new RTCIceCandidate(candidate)
+            );
         }
         const answer = await peerConnectionRef.current.createAnswer();
         await peerConnectionRef.current.setLocalDescription(answer);
@@ -178,10 +209,15 @@ export default function CombinedVideoChatPage({ params }: Props) {
           return;
         }
 
-        await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+        await peerConnectionRef.current.setRemoteDescription(
+          new RTCSessionDescription(data.answer)
+        );
         while (pendingCandidates.current.length) {
           const candidate = pendingCandidates.current.shift();
-          if (candidate) await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+          if (candidate)
+            await peerConnectionRef.current.addIceCandidate(
+              new RTCIceCandidate(candidate)
+            );
         }
       } catch (err) {
         console.error("Answer error:", err);
@@ -192,7 +228,9 @@ export default function CombinedVideoChatPage({ params }: Props) {
       if (!peerConnectionRef.current) return;
       try {
         if (peerConnectionRef.current.remoteDescription) {
-          await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+          await peerConnectionRef.current.addIceCandidate(
+            new RTCIceCandidate(data.candidate)
+          );
         } else {
           pendingCandidates.current.push(data.candidate);
         }
@@ -217,14 +255,18 @@ export default function CombinedVideoChatPage({ params }: Props) {
       setIsSearchingNext(false);
       setMessages([]);
       setIsConnected(false);
+      setRemoteStream(null);
       pendingCandidates.current = [];
       socket.emit("join-room", data.roomId);
-      
+
       if (localStream) {
         const pc = createPeerConnection(localStream);
         const roomUsers = data.roomId.replace("room_", "").split("_");
         if (socket.id === roomUsers[0]) {
-          pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true }).then((offer) => {
+          pc.createOffer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true,
+          }).then((offer) => {
             pc.setLocalDescription(offer);
             socket.emit("video-offer", { roomId: data.roomId, offer });
           });
@@ -247,7 +289,11 @@ export default function CombinedVideoChatPage({ params }: Props) {
         let stream = localStream;
         if (!stream) {
           stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { max: 30 } },
+            video: {
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+              frameRate: { max: 30 },
+            },
             audio: true,
           });
 
@@ -259,6 +305,7 @@ export default function CombinedVideoChatPage({ params }: Props) {
           setLocalStream(stream);
           if (localVideoRef.current) {
             localVideoRef.current.srcObject = stream;
+            safePlayVideo(localVideoRef.current);
           }
         }
 
@@ -266,7 +313,10 @@ export default function CombinedVideoChatPage({ params }: Props) {
 
         const roomUsers = currentRoomId.replace("room_", "").split("_");
         if (socket.id === roomUsers[0]) {
-          const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+          const offer = await pc.createOffer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true,
+          });
           await pc.setLocalDescription(offer);
           socket.emit("video-offer", { roomId: currentRoomId, offer });
         }
@@ -295,6 +345,7 @@ export default function CombinedVideoChatPage({ params }: Props) {
   const handleNextStranger = () => {
     setIsSearchingNext(true);
     setIsConnected(false);
+    setRemoteStream(null);
     setConnectionStatus("Searching...");
 
     if (remoteVideoRef.current) {
@@ -309,7 +360,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
       peerConnectionRef.current = null;
     }
 
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
     socket.emit(SOCKET_EVENTS.START_CHAT || "start-chat", {
       token,
       chatType: "video",
@@ -320,13 +372,17 @@ export default function CombinedVideoChatPage({ params }: Props) {
 
   const handleStopCall = () => {
     socket.emit("leave-room", currentRoomId);
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
     }
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
     }
-    router.push("/");
+    setIsConnected(false);
+    setIsSearchingNext(false);
+    setRemoteStream(null);
+    setConnectionStatus("Stopped. Click Start to find partner.");
   };
 
   const handleToggleMute = () => {
@@ -372,11 +428,14 @@ export default function CombinedVideoChatPage({ params }: Props) {
   };
 
   return (
-    <div className="flex h-[100dvh] w-full flex-col bg-[#F8FAFC] text-slate-800 font-sans overflow-hidden select-none">
+    <div className="flex min-h-[100dvh] w-full flex-col bg-[#F8FAFC] text-slate-800 font-sans overflow-x-hidden select-none">
       {/* Header */}
-      <header className="flex h-12 lg:h-14 w-full items-center justify-between border-b border-slate-200/80 bg-white/90 backdrop-blur-md px-3 lg:px-6 shadow-xs shrink-0 z-50">
+      <header className="flex h-12 lg:h-14 w-full items-center justify-between border-b border-slate-200/80 bg-white/90 backdrop-blur-md px-3 lg:px-6 shadow-xs shrink-0 z-50 sticky top-0">
         <div className="flex items-center gap-1.5 lg:gap-2">
-          <Link href="/" className="flex shrink-0 items-center transition-transform duration-200 hover:scale-[1.02]">
+          <Link
+            href="/"
+            className="flex shrink-0 items-center transition-transform duration-200 hover:scale-[1.02]"
+          >
             <Image
               src="/logo-header.png"
               alt="VChatz"
@@ -403,7 +462,9 @@ export default function CombinedVideoChatPage({ params }: Props) {
           <div className="flex items-center gap-2 rounded-full border border-amber-300/60 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-1 text-xs font-bold text-amber-900 shadow-sm">
             <Coins className="h-3.5 w-3.5 fill-amber-500 text-amber-500 shrink-0" />
             <span>Coins</span>
-            <span className="font-extrabold text-slate-900 text-xs bg-amber-200/70 px-1.5 py-0.5 rounded-full">120</span>
+            <span className="font-extrabold text-slate-900 text-xs bg-amber-200/70 px-1.5 py-0.5 rounded-full">
+              120
+            </span>
             <button className="flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-xs hover:scale-110 transition">
               <Plus className="h-3 w-3" />
             </button>
@@ -414,8 +475,12 @@ export default function CombinedVideoChatPage({ params }: Props) {
               <User className="h-4 w-4" />
             </div>
             <div className="text-left">
-              <p className="text-xs font-bold leading-tight text-slate-900">Profile</p>
-              <p className="text-[9px] text-[#1455e8] font-semibold">ID: VCH12345</p>
+              <p className="text-xs font-bold leading-tight text-slate-900">
+                Profile
+              </p>
+              <p className="text-[9px] text-[#1455e8] font-semibold">
+                ID: VCH12345
+              </p>
             </div>
           </div>
         </div>
@@ -448,14 +513,21 @@ export default function CombinedVideoChatPage({ params }: Props) {
             </div>
             <div>
               <p className="text-xs font-bold text-slate-800">My Profile</p>
-              <p className="text-[10px] text-[#1455e8] font-semibold">ID: VCH12345</p>
+              <p className="text-[10px] text-[#1455e8] font-semibold">
+                ID: VCH12345
+              </p>
             </div>
           </div>
 
           <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2 text-xs font-bold text-amber-900 shadow-sm">
             <div className="flex items-center gap-2">
               <Coins className="h-3.5 w-3.5 fill-amber-500 text-amber-500 shrink-0" />
-              <span>Coins: <strong className="text-slate-900 bg-amber-200/70 px-1.5 py-0.5 rounded-full ml-1">120</strong></span>
+              <span>
+                Coins:{" "}
+                <strong className="text-slate-900 bg-amber-200/70 px-1.5 py-0.5 rounded-full ml-1">
+                  120
+                </strong>
+              </span>
             </div>
             <button className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm hover:scale-105 transition">
               <Plus className="h-3 w-3" />
@@ -475,14 +547,14 @@ export default function CombinedVideoChatPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Main Container - Strictly 1 Screen Fixed */}
-      <div className="flex flex-1 overflow-hidden p-2 lg:p-3 gap-2 relative">
-        {/* Left Section (Video and Controls Area) */}
-        <div className="flex flex-1 flex-col gap-2 overflow-hidden justify-between">
-          {/* Video Grid */}
-          <div className={`grid grid-cols-1 lg:grid-cols-2 gap-2 transition-all duration-300 flex-1 min-h-0`}>
+      {/* Main Container - Fully Mobile Responsive & Scrollable */}
+      <div className="flex flex-1 flex-col lg:flex-row p-2 lg:p-3 gap-2 relative w-full max-w-[1440px] mx-auto">
+        {/* Left Section (Video & Controls Area) */}
+        <div className="flex flex-1 flex-col gap-2 w-full">
+          {/* Video Grid - Adaptive height for mobile */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 w-full">
             {/* Local Video */}
-            <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl bg-slate-950 shadow-md border border-slate-800">
+            <div className="relative flex h-[220px] sm:h-[280px] lg:h-[380px] w-full items-center justify-center overflow-hidden rounded-xl bg-slate-950 shadow-md border border-slate-800">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -491,7 +563,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 className="h-full w-full object-cover block"
               />
               <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 rounded-full bg-slate-900/80 border border-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-md">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span> You
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>{" "}
+                You
               </div>
 
               {/* Mute Button inside Local Video */}
@@ -505,19 +578,33 @@ export default function CombinedVideoChatPage({ params }: Props) {
                       : "bg-white/10 text-white hover:bg-white/20"
                   }`}
                 >
-                  {isMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-                  <span className="hidden sm:inline">{isMuted ? "Muted" : "Mute"}</span>
+                  {isMuted ? (
+                    <MicOff className="h-3.5 w-3.5" />
+                  ) : (
+                    <Mic className="h-3.5 w-3.5" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {isMuted ? "Muted" : "Mute"}
+                  </span>
                 </button>
               </div>
             </div>
 
             {/* Remote Video Stream */}
-            <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl bg-slate-950 shadow-md border border-slate-800">
+            <div className="relative flex h-[220px] sm:h-[280px] lg:h-[380px] w-full items-center justify-center overflow-hidden rounded-xl bg-slate-950 shadow-md border border-slate-800">
               {(!isConnected || isSearchingNext) && (
-                <div className="flex flex-col items-center justify-center text-center p-4">
-                  <Loader2 className="h-8 w-8 animate-spin text-[#1455e8] mb-2" />
-                  <p className="text-xs font-semibold text-white">Finding your next partner...</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5 capitalize">{connectionStatus}</p>
+                <div className="flex flex-col items-center justify-center text-center p-4 absolute inset-0 z-10 bg-slate-950/90">
+                  {isSearchingNext ? (
+                    <Loader2 className="h-8 w-8 animate-spin text-[#1455e8] mb-2" />
+                  ) : null}
+                  <p className="text-xs font-semibold text-white">
+                    {isSearchingNext
+                      ? "Finding your next partner..."
+                      : "Connection stopped. Click Start to search."}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5 capitalize">
+                    {connectionStatus}
+                  </p>
                 </div>
               )}
 
@@ -525,17 +612,39 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                className={`h-full w-full object-cover ${!isConnected || isSearchingNext || hideRemoteVideo ? "hidden" : "block"}`}
+                className={`h-full w-full object-cover ${
+                  !isConnected || isSearchingNext || hideRemoteVideo
+                    ? "hidden"
+                    : "block"
+                }`}
               />
 
-              <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 rounded-full bg-slate-900/80 border border-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-md">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span> Partner
+              <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 rounded-full bg-slate-900/80 border border-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-md z-20">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>{" "}
+                Partner
               </div>
+
+              {/* Video Camera Icon Overlay Button */}
+              <button
+                onClick={() => setHideRemoteVideo((prev) => !prev)}
+                title={hideRemoteVideo ? "Show Video" : "Hide Video"}
+                className={`absolute top-2.5 right-2.5 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur-md transition shadow-md border z-20 ${
+                  hideRemoteVideo
+                    ? "bg-amber-500/90 text-white border-amber-400/50"
+                    : "bg-slate-900/70 text-white border-white/15 hover:bg-slate-900/90"
+                }`}
+              >
+                {hideRemoteVideo ? (
+                  <VideoOff className="h-4 w-4" />
+                ) : (
+                  <Video className="h-4 w-4" />
+                )}
+              </button>
 
               {isConnected && !isSearchingNext && (
                 <button
                   onClick={() => setIsFriendAdded(!isFriendAdded)}
-                  className={`hidden lg:flex absolute top-2.5 left-24 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold backdrop-blur-md transition shadow-sm ${
+                  className={`flex absolute bottom-2.5 left-2.5 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold backdrop-blur-md transition shadow-sm z-20 ${
                     isFriendAdded
                       ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white"
                       : "bg-slate-900/70 border border-white/15 text-white hover:bg-slate-900/90"
@@ -555,30 +664,34 @@ export default function CombinedVideoChatPage({ params }: Props) {
             </div>
           </div>
 
-          {/* Action Control Buttons (Both, Settings, Stop, Eye Icon + Start/Next Button) */}
-          <div className="grid grid-cols-4 gap-1.5 lg:gap-2 shrink-0">
-            {/* Gender Filter Button */}
-            <button className="flex items-center justify-between rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 p-2 lg:p-2.5 text-white shadow-sm hover:scale-[1.01] transition-all border border-teal-400/30">
+          {/* Action Control Buttons - Grid 2x2 on mobile, 4 columns on desktop */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 lg:gap-2 shrink-0">
+            {/* Both Button */}
+            <button className="flex items-center justify-between rounded-xl bg-blue-50/90 p-2 lg:p-2.5 text-blue-700 shadow-xs hover:bg-blue-100 transition-all border border-blue-200">
               <div className="flex items-center gap-1.5 min-w-0">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/20 text-white">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
                   <UserCheck className="h-3.5 w-3.5" />
                 </div>
                 <div className="text-left min-w-0">
-                  <p className="text-[10px] lg:text-xs font-bold truncate">Both</p>
-                  <p className="text-[8px] text-teal-100 truncate">All Gender</p>
+                  <p className="text-[18px] lg:text-xs font-bold truncate">
+                    Both
+                  </p>
+                  <p className="text-[12px] text-blue-500 truncate">All Gender</p>
                 </div>
               </div>
             </button>
 
-            {/* Settings Filter Button */}
-            <button className="flex items-center justify-between rounded-xl bg-gradient-to-br from-purple-600 to-indigo-700 p-2 lg:p-2.5 text-white shadow-sm hover:scale-[1.01] transition-all border border-purple-400/30">
+            {/* Settings Button */}
+            <button className="flex items-center justify-between rounded-xl bg-amber-50/90 p-2 lg:p-2.5 text-amber-800 shadow-xs hover:bg-amber-100 transition-all border border-amber-200">
               <div className="flex items-center gap-1.5 min-w-0">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/20 text-white">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
                   <Sliders className="h-3.5 w-3.5" />
                 </div>
                 <div className="text-left min-w-0">
-                  <p className="text-[10px] lg:text-xs font-bold truncate">Settings</p>
-                  <p className="text-[8px] text-purple-100 truncate">Filter</p>
+                  <p className="text-[18px] lg:text-xs font-bold truncate">
+                    Settings
+                  </p>
+                  <p className="text-[12px] text-amber-600 truncate">Filter</p>
                 </div>
               </div>
             </button>
@@ -587,49 +700,45 @@ export default function CombinedVideoChatPage({ params }: Props) {
             <button
               onClick={handleStopCall}
               title="Stop Call"
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-[#eab308] hover:bg-yellow-600 p-2 lg:p-2.5 text-white font-bold shadow-sm transition-all"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50/90 hover:bg-emerald-100 p-2 lg:p-2.5 text-emerald-700 font-bold shadow-xs transition-all border border-emerald-200"
             >
-              <Square className="h-3.5 w-3.5 fill-white" />
-              <span className="text-[11px] lg:text-xs font-bold truncate">Stop</span>
+              <Square className="h-3.5 w-3.5 fill-emerald-600 text-emerald-600" />
+              <span className="text-[18px] lg:text-xs font-bold truncate">
+                Stop
+              </span>
             </button>
 
-            {/* Start / Next Button with Eye Icon on its left side */}
-            <div className="flex items-center gap-1 bg-[#1455e8] rounded-xl p-1 shadow-md border border-blue-400/30">
-              <button
-                onClick={() => setHideRemoteVideo((prev) => !prev)}
-                title={hideRemoteVideo ? "Show Video" : "Hide Video"}
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all ${
-                  hideRemoteVideo
-                    ? "bg-amber-500 text-white"
-                    : "bg-white/20 text-white hover:bg-white/30"
-                }`}
-              >
-                {hideRemoteVideo ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-
-              <button
-                onClick={handleNextStranger}
-                disabled={isSearchingNext}
-                className="flex flex-1 items-center justify-center gap-1 bg-transparent text-white font-bold p-1 disabled:opacity-50"
-              >
-                {isSearchingNext ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Play className="h-4 w-4 fill-white text-white" />
-                )}
-                <div className="text-left min-w-0 pr-1">
-                  <p className="text-[10px] lg:text-xs font-bold leading-tight truncate">
-                    {isSearchingNext ? "Finding..." : isConnected ? "Next" : "Start"}
-                  </p>
-                  <p className="text-[8px] text-blue-100 truncate">
-                    {isSearchingNext ? "Please wait" : isConnected ? "Find another partner" : "Find Partner"}
-                  </p>
-                </div>
-              </button>
-            </div>
+            {/* Start / Next Button */}
+            <button
+              onClick={handleNextStranger}
+              disabled={isSearchingNext}
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-[#1455e8] hover:bg-blue-700 p-2 lg:p-2.5 text-white font-bold shadow-md transition-all disabled:opacity-50"
+            >
+              {isSearchingNext ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Play className="h-3.5 w-3.5 fill-white text-white" />
+              )}
+              <div className="text-left min-w-0">
+                <p className="text-[18px] lg:text-xs font-bold leading-tight truncate">
+                  {isSearchingNext
+                    ? "Finding..."
+                    : isConnected
+                    ? "Next"
+                    : "Start"}
+                </p>
+                <p className="text-[12px] text-blue-100 truncate">
+                  {isSearchingNext
+                    ? "Please wait"
+                    : isConnected
+                    ? "Find another"
+                    : "Find Partner"}
+                </p>
+              </div>
+            </button>
           </div>
 
-          {/* Designed Banner */}
+          {/* Banner */}
           <div className="relative w-full h-[50px] sm:h-[58px] lg:h-[65px] overflow-hidden rounded-xl shadow-sm shrink-0 bg-[#090314] flex items-center justify-between px-3">
             <div className="absolute inset-0 z-0 opacity-80 pointer-events-none">
               <Image
@@ -664,20 +773,25 @@ export default function CombinedVideoChatPage({ params }: Props) {
         </div>
 
         {/* Right Section Chat Box */}
-        <div className={`
+        <div
+          className={`
           bg-white shadow-2xl transition-all duration-300 z-30 flex flex-col
           lg:relative lg:w-72 lg:rounded-xl lg:border lg:border-slate-200/80
-          ${isChatVisible
-            ? 'flex fixed inset-x-0 bottom-0 h-[45vh] rounded-t-2xl border-t border-slate-200 lg:h-auto'
-            : 'hidden'}
-        `}>
+          ${
+            isChatVisible
+              ? "flex fixed inset-x-0 bottom-0 h-[50vh] rounded-t-2xl border-t border-slate-200 lg:h-auto"
+              : "hidden"
+          }
+        `}
+        >
           <div className="flex items-center justify-between border-b border-slate-100 p-2.5 shrink-0">
             <h2 className="text-xs font-bold text-slate-900 flex items-center gap-1">
               <MessageCircle className="h-3.5 w-3.5 text-[#1455e8]" /> Chat
             </h2>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Online
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>{" "}
+                Online
               </div>
               <button
                 onClick={() => setIsChatVisible(false)}
@@ -690,7 +804,9 @@ export default function CombinedVideoChatPage({ params }: Props) {
 
           <div className="mx-2 mt-1.5 flex gap-1.5 rounded-lg bg-blue-50/70 p-1.5 text-[10px] text-blue-900 border border-blue-100 shrink-0">
             <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[#1455e8]" />
-            <p className="font-medium leading-tight">Be kind. Inappropriate behavior leads to a ban.</p>
+            <p className="font-medium leading-tight">
+              Be kind. Inappropriate behavior leads to a ban.
+            </p>
           </div>
 
           <div className="flex-1 overflow-y-auto p-2.5 space-y-2 min-h-0">
@@ -698,31 +814,66 @@ export default function CombinedVideoChatPage({ params }: Props) {
               const isMe = msg.sender === socket.id;
 
               return (
-                <div key={msg.id} className={`group relative flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                <div
+                  key={msg.id}
+                  className={`group relative flex flex-col ${
+                    isMe ? "items-end" : "items-start"
+                  }`}
+                >
                   <div className="flex items-center gap-1">
                     {isMe && (
-                      <button onClick={() => handleDeleteMessage(msg.id)} className="p-0.5 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleDeleteMessage(msg.id)}
+                        className="p-0.5 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
                         <Trash2 className="h-2.5 w-2.5" />
                       </button>
                     )}
 
-                    <div className={`max-w-[85%] rounded-xl px-3 py-1.5 text-xs font-medium shadow-xs ${isMe ? "bg-[#1455e8] text-white rounded-br-none" : "bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200/60"}`}>
+                    <div
+                      className={`max-w-[85%] rounded-xl px-3 py-1.5 text-xs font-medium shadow-xs ${
+                        isMe
+                          ? "bg-[#1455e8] text-white rounded-br-none"
+                          : "bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200/60"
+                      }`}
+                    >
                       {msg.message}
                     </div>
 
                     {!isMe && (
                       <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setReplyingTo({ id: msg.id, sender: msg.sender, message: msg.message })} className="p-0.5 text-slate-400 hover:text-slate-700">
+                        <button
+                          onClick={() =>
+                            setReplyingTo({
+                              id: msg.id,
+                              sender: msg.sender,
+                              message: msg.message,
+                            })
+                          }
+                          className="p-0.5 text-slate-400 hover:text-slate-700"
+                        >
                           <Reply className="h-2.5 w-2.5" />
                         </button>
-                        <button onClick={() => handleCopyMessage(msg.message, msg.id)} className="p-0.5 text-slate-400 hover:text-slate-700">
-                          {copiedMsgId === msg.id ? <Check className="h-2.5 w-2.5 text-emerald-500" /> : <Copy className="h-2.5 w-2.5" />}
+                        <button
+                          onClick={() =>
+                            handleCopyMessage(msg.message, msg.id)
+                          }
+                          className="p-0.5 text-slate-400 hover:text-slate-700"
+                        >
+                          {copiedMsgId === msg.id ? (
+                            <Check className="h-2.5 w-2.5 text-emerald-500" />
+                          ) : (
+                            <Copy className="h-2.5 w-2.5" />
+                          )}
                         </button>
                       </div>
                     )}
                   </div>
                   <span className="text-[8px] text-slate-400 mt-0.5 px-1 font-medium">
-                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {new Date(msg.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </span>
                 </div>
               );
@@ -730,8 +881,15 @@ export default function CombinedVideoChatPage({ params }: Props) {
             <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleSendMessage} className="p-2 border-t border-slate-100 flex items-center gap-1.5 flex-nowrap bg-white shrink-0">
-            <button type="button" onClick={() => setShowEmojiPicker((p) => !p)} className="text-slate-400 hover:text-[#1455e8] p-1 shrink-0 transition">
+          <form
+            onSubmit={handleSendMessage}
+            className="p-2 border-t border-slate-100 flex items-center gap-1.5 flex-nowrap bg-white shrink-0"
+          >
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker((p) => !p)}
+              className="text-slate-400 hover:text-[#1455e8] p-1 shrink-0 transition"
+            >
               <Smile className="h-3.5 w-3.5" />
             </button>
             <input
@@ -741,7 +899,11 @@ export default function CombinedVideoChatPage({ params }: Props) {
               onChange={(e) => setInputMessage(e.target.value)}
               className="min-w-0 flex-1 rounded-full bg-slate-50 px-3 py-1 text-xs text-slate-800 border border-slate-200 focus:outline-none focus:border-[#1455e8] transition"
             />
-            <button type="submit" disabled={!inputMessage.trim()} className="flex h-6 w-6 min-w-[24px] items-center justify-center rounded-full bg-[#1455e8] text-white disabled:opacity-40 shrink-0 transition">
+            <button
+              type="submit"
+              disabled={!inputMessage.trim()}
+              className="flex h-6 w-6 min-w-[24px] items-center justify-center rounded-full bg-[#1455e8] text-white disabled:opacity-40 shrink-0 transition"
+            >
               <Send className="h-2.5 w-2.5" />
             </button>
           </form>
@@ -751,18 +913,22 @@ export default function CombinedVideoChatPage({ params }: Props) {
       {/* Floating Chat Icon */}
       <button
         onClick={() => setIsChatVisible(!isChatVisible)}
-        className="fixed bottom-10 right-3 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#1455e8] text-white shadow-xl hover:scale-105 active:scale-95 transition-all"
+        className="fixed bottom-6 right-3 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#1455e8] text-white shadow-xl hover:scale-105 active:scale-95 transition-all lg:hidden"
       >
         <MessageCircle className="h-5 w-5" />
       </button>
 
       {/* Footer */}
-      <footer className="flex h-6 w-full items-center justify-between border-t border-slate-200 bg-white px-3 text-[9px] text-slate-400 shrink-0 z-20">
+      <footer className="flex h-8 w-full items-center justify-between border-t border-slate-200 bg-white px-3 text-[9px] text-slate-400 shrink-0 z-20 mt-auto">
         <p>© 2026 Vchatz. All rights reserved.</p>
         <div className="flex gap-3">
-          <a href="#" className="hover:underline">Terms</a>
+          <a href="#" className="hover:underline">
+            Terms
+          </a>
           <span>|</span>
-          <a href="#" className="hover:underline">Privacy</a>
+          <a href="#" className="hover:underline">
+            Privacy
+          </a>
         </div>
       </footer>
     </div>
