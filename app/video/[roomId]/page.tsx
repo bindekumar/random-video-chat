@@ -521,8 +521,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
       {/* MOBILE MENU DRAWER */}
       <div
         className={`absolute top-12 left-0 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-xl px-4 py-4 shadow-2xl transition-all duration-300 ease-in-out lg:hidden z-40 ${isMobileMenuOpen
-            ? "translate-y-0 opacity-100 pointer-events-auto block"
-            : "-translate-y-4 opacity-0 pointer-events-none hidden"
+          ? "translate-y-0 opacity-100 pointer-events-auto block"
+          : "-translate-y-4 opacity-0 pointer-events-none hidden"
           }`}
       >
         <div className="flex flex-col gap-2.5">
@@ -581,8 +581,12 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 className={`h-full w-full object-cover ${hideLocalVideo ? "hidden" : "block"}`}
               />
               {hideLocalVideo && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-white text-xs font-semibold">
-                  Camera is off
+                <div className="relative w-full h-[250px] sm:h-[350px] md:h-[450px] lg:h-[550px] bg-black">
+
+                  <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-white text-xs font-semibold">
+                    Camera is off
+                  </div>
+
                 </div>
               )}
               <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 rounded-full bg-slate-900/80 border border-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-md">
@@ -596,8 +600,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
                   onClick={handleToggleMute}
                   title={isMuted ? "Unmute" : "Mute"}
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all ${isMuted
-                      ? "bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-sm"
-                      : "bg-white/10 text-white hover:bg-white/20"
+                    ? "bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-sm"
+                    : "bg-white/10 text-white hover:bg-white/20"
                     }`}
                 >
                   {isMuted ? (
@@ -614,8 +618,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
                   onClick={handleToggleLocalVideo}
                   title={hideLocalVideo ? "Turn on Camera" : "Turn off Camera"}
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all ${hideLocalVideo
-                      ? "bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-sm"
-                      : "bg-white/10 text-white hover:bg-white/20"
+                    ? "bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-sm"
+                    : "bg-white/10 text-white hover:bg-white/20"
                     }`}
                 >
                   {hideLocalVideo ? (
@@ -623,7 +627,7 @@ export default function CombinedVideoChatPage({ params }: Props) {
                   ) : (
                     <Video className="h-3.5 w-3.5" />
                   )}
-                
+
                 </button>
               </div>
             </div>
@@ -663,8 +667,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 <button
                   onClick={() => setIsFriendAdded(!isFriendAdded)}
                   className={`hidden lg:flex absolute bottom-2.5 left-2.5 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold backdrop-blur-md transition shadow-sm ${isFriendAdded
-                      ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white"
-                      : "bg-slate-900/70 border border-white/15 text-white hover:bg-slate-900/90"
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white"
+                    : "bg-slate-900/70 border border-white/15 text-white hover:bg-slate-900/90"
                     }`}
                 >
                   {isFriendAdded ? (
@@ -846,8 +850,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
 
                     <div
                       className={`max-w-[85%] rounded-xl px-3 py-1.5 text-xs font-medium shadow-xs ${isMe
-                          ? "bg-[#1455e8] text-white rounded-br-none"
-                          : "bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200/60"
+                        ? "bg-[#1455e8] text-white rounded-br-none"
+                        : "bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200/60"
                         }`}
                     >
                       {msg.message}
