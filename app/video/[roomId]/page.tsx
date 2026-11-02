@@ -29,8 +29,6 @@ import {
   Mic,
   MicOff,
   UserPlus,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import { socket } from "@/lib/socket";
 import { SOCKET_EVENTS } from "@/servers/socket/events";
@@ -80,7 +78,6 @@ export default function CombinedVideoChatPage({ params }: Props) {
   const [isConnected, setIsConnected] = useState(false);
   const [isFriendAdded, setIsFriendAdded] = useState(false);
   const [hideLocalVideo, setHideLocalVideo] = useState(false);
-  const [hideRemoteVideo, setHideRemoteVideo] = useState(false);
 
   const [isMuted, setIsMuted] = useState(false);
   const [isChatVisible, setIsChatVisible] = useState(false);
@@ -93,7 +90,6 @@ export default function CombinedVideoChatPage({ params }: Props) {
   const [isSearchingNext, setIsSearchingNext] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ReplyPayload | null>(null);
 
-  // Toast Message State for Coming Soon features
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -451,10 +447,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
 
   return (
     <div className="flex h-[100dvh] w-full flex-col bg-[#F8FAFC] text-slate-800 font-sans overflow-hidden select-none relative">
-
-      {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-white/10 animate-fade-in">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-white/10">
           {toastMessage}
         </div>
       )}
@@ -518,9 +512,6 @@ export default function CombinedVideoChatPage({ params }: Props) {
         {/* MOBILE PROFILE TOGGLE BUTTON */}
         <button
           onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-          aria-expanded={isMobileMenuOpen}
-          aria-controls="mobile-menu"
-          aria-label="Toggle Profile Menu"
           className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-orange-50 text-[#1455e8] shadow-xs hover:shadow transition-all active:scale-95 lg:hidden"
         >
           {isMobileMenuOpen ? <X className="h-4 w-4" /> : <User className="h-4 w-4" />}
@@ -529,10 +520,9 @@ export default function CombinedVideoChatPage({ params }: Props) {
 
       {/* MOBILE MENU DRAWER */}
       <div
-        id="mobile-menu"
         className={`absolute top-12 left-0 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-xl px-4 py-4 shadow-2xl transition-all duration-300 ease-in-out lg:hidden z-40 ${isMobileMenuOpen
-          ? "translate-y-0 opacity-100 pointer-events-auto block"
-          : "-translate-y-4 opacity-0 pointer-events-none hidden"
+            ? "translate-y-0 opacity-100 pointer-events-auto block"
+            : "-translate-y-4 opacity-0 pointer-events-none hidden"
           }`}
       >
         <div className="flex flex-col gap-2.5">
@@ -578,7 +568,6 @@ export default function CombinedVideoChatPage({ params }: Props) {
 
       {/* Main Container */}
       <div className="flex flex-1 overflow-hidden p-2 lg:p-3 gap-2 relative">
-        {/* Left Section */}
         <div className="flex flex-1 flex-col gap-2 overflow-hidden justify-between">
           {/* Video Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 transition-all duration-300 flex-1 min-h-0">
@@ -607,8 +596,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
                   onClick={handleToggleMute}
                   title={isMuted ? "Unmute" : "Mute"}
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all ${isMuted
-                    ? "bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-sm"
-                    : "bg-white/10 text-white hover:bg-white/20"
+                      ? "bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-sm"
+                      : "bg-white/10 text-white hover:bg-white/20"
                     }`}
                 >
                   {isMuted ? (
@@ -625,8 +614,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
                   onClick={handleToggleLocalVideo}
                   title={hideLocalVideo ? "Turn on Camera" : "Turn off Camera"}
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all ${hideLocalVideo
-                    ? "bg-gradient-to-r  from-rose-600 to-red-500 text-white shadow-sm"
-                    : "bg-white/10 text-white hover:bg-white/20"
+                      ? "bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-sm"
+                      : "bg-white/10 text-white hover:bg-white/20"
                     }`}
                 >
                   {hideLocalVideo ? (
@@ -634,15 +623,7 @@ export default function CombinedVideoChatPage({ params }: Props) {
                   ) : (
                     <Video className="h-3.5 w-3.5" />
                   )}
-
-                  {/*
-
-                  <span className="hidden sm:inline">
-                    {hideLocalVideo ? "Camera Off" : "Camera"}
-                  </span>
-
-                  */}
-
+                
                 </button>
               </div>
             </div>
@@ -669,9 +650,7 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                className={`h-full w-full object-cover ${!isConnected || isSearchingNext || hideRemoteVideo
-                  ? "hidden"
-                  : "block"
+                className={`h-full w-full object-cover ${!isConnected || isSearchingNext ? "hidden" : "block"
                   }`}
               />
 
@@ -680,33 +659,12 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 Partner
               </div>
 
-              {/* Remote Video Hide/Show Button */}
-
-              {/*
-              <button
-                onClick={() => setHideRemoteVideo((prev) => !prev)}
-                title={hideRemoteVideo ? "Show Video" : "Hide Video"}
-                className={`absolute top-2.5 right-2.5 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur-md transition shadow-md border ${
-                  hideRemoteVideo
-                    ? "bg-amber-500/90 text-white border-amber-400/50"
-                    : "bg-slate-900/70 text-white border-white/15 hover:bg-slate-900/90"
-                }`}
-              >
-                {hideRemoteVideo ? (
-                  <VideoOff className="h-4 w-4" />
-                ) : (
-                  <Video className="h-4 w-4" />
-                )}
-              </button>
-
-              */}
-
               {isConnected && !isSearchingNext && (
                 <button
                   onClick={() => setIsFriendAdded(!isFriendAdded)}
                   className={`hidden lg:flex absolute bottom-2.5 left-2.5 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold backdrop-blur-md transition shadow-sm ${isFriendAdded
-                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white"
-                    : "bg-slate-900/70 border border-white/15 text-white hover:bg-slate-900/90"
+                      ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white"
+                      : "bg-slate-900/70 border border-white/15 text-white hover:bg-slate-900/90"
                     }`}
                 >
                   {isFriendAdded ? (
@@ -724,8 +682,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
           </div>
 
           {/* Action Control Buttons */}
-
           <div className="grid grid-cols-4 gap-1.5 lg:gap-2 shrink-0">
+
             {/* Both Button */}
             <button
               onClick={() => showToast("Both gender filter feature is Coming Soon!")}
@@ -736,13 +694,12 @@ export default function CombinedVideoChatPage({ params }: Props) {
                   <UserCheck className="h-3.5 w-3.5" />
                 </div>
                 <div className="text-left min-w-0">
-                  <p className="text-[10px] lg:text-xs font-bold truncate">
-                    Both
-                  </p>
+                  <p className="text-[10px] lg:text-xs font-bold truncate">Both</p>
                   <p className="text-[8px] text-blue-500 truncate">All Gender</p>
                 </div>
               </div>
             </button>
+
 
             {/* Settings Button */}
             <button
@@ -761,7 +718,6 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 </div>
               </div>
             </button>
-
             {/* Stop Button */}
             <button
               onClick={handleStopCall}
@@ -769,43 +725,30 @@ export default function CombinedVideoChatPage({ params }: Props) {
               style={{ backgroundColor: "#FFBD31" }}
               className="flex items-center justify-center gap-1.5 rounded-xl hover:opacity-90 p-2 lg:p-2.5 text-slate-900 font-bold shadow-xs transition-all border border-amber-300 cursor-pointer"
             >
-              <Square className="h-3.5 w-3.5 fill-white text-white" />
-              <span className="text-[11px] lg:text-xs font-bold truncate text-white">
-                Stop
-              </span>
-              
+              <Square className="h-3.5 w-3.5 fill-slate-900 text-slate-900" />
+              <span className="text-[11px] lg:text-xs font-bold truncate">Stop</span>
             </button>
 
-            {/* Start / Next Button with Eye Icon on Left Side */}
-            <div className="flex items-center gap-1">
-              <button
-                onClick={handleNextStranger}
-                disabled={isSearchingNext}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#1455e8] hover:bg-blue-700 p-2 lg:p-2.5 text-white font-bold shadow-md transition-all disabled:opacity-50 cursor-pointer h-full"
-              >
-                {isSearchingNext ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Play className="h-3.5 w-3.5 fill-white text-white" />
-                )}
-                <div className="text-left min-w-0">
-                  <p className="text-[10px] lg:text-xs font-bold leading-tight truncate">
-                    {isSearchingNext
-                      ? "Finding..."
-                      : isConnected
-                        ? "Next"
-                        : "Start"}
-                  </p>
-                  <p className="text-[8px] text-blue-100 truncate">
-                    {isSearchingNext
-                      ? "Please wait"
-                      : isConnected
-                        ? "Find another"
-                        : "Find Partner"}
-                  </p>
-                </div>
-              </button>
-            </div>
+            {/* Start / Next Button */}
+            <button
+              onClick={handleNextStranger}
+              disabled={isSearchingNext}
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-[#1455e8] hover:bg-blue-700 p-2 lg:p-2.5 text-white font-bold shadow-md transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {isSearchingNext ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Play className="h-3.5 w-3.5 fill-white text-white" />
+              )}
+              <div className="text-left min-w-0">
+                <p className="text-[10px] lg:text-xs font-bold leading-tight truncate">
+                  {isSearchingNext ? "Finding..." : isConnected ? "Next" : "Start"}
+                </p>
+                <p className="text-[8px] text-blue-100 truncate">
+                  {isSearchingNext ? "Please wait" : isConnected ? "Find another" : "Find Partner"}
+                </p>
+              </div>
+            </button>
           </div>
 
           {/* Banner */}
@@ -903,8 +846,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
 
                     <div
                       className={`max-w-[85%] rounded-xl px-3 py-1.5 text-xs font-medium shadow-xs ${isMe
-                        ? "bg-[#1455e8] text-white rounded-br-none"
-                        : "bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200/60"
+                          ? "bg-[#1455e8] text-white rounded-br-none"
+                          : "bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200/60"
                         }`}
                     >
                       {msg.message}
