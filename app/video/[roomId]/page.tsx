@@ -131,6 +131,7 @@ export default function CombinedVideoChatPage({ params }: Props) {
   const createPeerConnection = (stream: MediaStream | null) => {
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
     }
 
     const pc = new RTCPeerConnection(ICE_SERVERS);
@@ -187,24 +188,22 @@ export default function CombinedVideoChatPage({ params }: Props) {
     let isMounted = true;
 
     async function handleVideoOffer(data: { offer: RTCSessionDescriptionInit }) {
-      if (!peerConnectionRef.current) return;
+      const pc = peerConnectionRef.current;
+      if (!pc) return;
       try {
-        if (peerConnectionRef.current.signalingState !== "stable") {
+        if (pc.signalingState !== "stable") {
           return;
         }
 
-        await peerConnectionRef.current.setRemoteDescription(
-          new RTCSessionDescription(data.offer)
-        );
+        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
         while (pendingCandidates.current.length) {
           const candidate = pendingCandidates.current.shift();
-          if (candidate)
-            await peerConnectionRef.current.addIceCandidate(
-              new RTCIceCandidate(candidate)
-            );
+          if (candidate) {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          }
         }
-        const answer = await peerConnectionRef.current.createAnswer();
-        await peerConnectionRef.current.setLocalDescription(answer);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
         socket.emit("video-answer", { roomId: currentRoomId, answer });
       } catch (err) {
         console.error("Offer error:", err);
@@ -212,21 +211,19 @@ export default function CombinedVideoChatPage({ params }: Props) {
     }
 
     async function handleVideoAnswer(data: { answer: RTCSessionDescriptionInit }) {
-      if (!peerConnectionRef.current) return;
+      const pc = peerConnectionRef.current;
+      if (!pc) return;
       try {
-        if (peerConnectionRef.current.signalingState === "stable") {
+        if (pc.signalingState === "stable") {
           return;
         }
 
-        await peerConnectionRef.current.setRemoteDescription(
-          new RTCSessionDescription(data.answer)
-        );
+        await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
         while (pendingCandidates.current.length) {
           const candidate = pendingCandidates.current.shift();
-          if (candidate)
-            await peerConnectionRef.current.addIceCandidate(
-              new RTCIceCandidate(candidate)
-            );
+          if (candidate) {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          }
         }
       } catch (err) {
         console.error("Answer error:", err);
@@ -234,12 +231,11 @@ export default function CombinedVideoChatPage({ params }: Props) {
     }
 
     async function handleIceCandidate(data: { candidate: RTCIceCandidateInit }) {
-      if (!peerConnectionRef.current) return;
+      const pc = peerConnectionRef.current;
+      if (!pc) return;
       try {
-        if (peerConnectionRef.current.remoteDescription) {
-          await peerConnectionRef.current.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
+        if (pc.remoteDescription && pc.remoteDescription.type) {
+          await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
         } else {
           pendingCandidates.current.push(data.candidate);
         }
@@ -275,8 +271,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
           pc.createOffer({
             offerToReceiveAudio: true,
             offerToReceiveVideo: true,
-          }).then((offer) => {
-            pc.setLocalDescription(offer);
+          }).then(async (offer) => {
+            await pc.setLocalDescription(offer);
             socket.emit("video-offer", { roomId: data.roomId, offer });
           });
         }
@@ -346,7 +342,10 @@ export default function CombinedVideoChatPage({ params }: Props) {
       socket.off("video-answer", handleVideoAnswer);
       socket.off("ice-candidate", handleIceCandidate);
 
-      if (peerConnectionRef.current) peerConnectionRef.current.close();
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
       socket.emit("leave-room", currentRoomId);
     };
   }, [currentRoomId]);
@@ -520,10 +519,11 @@ export default function CombinedVideoChatPage({ params }: Props) {
 
       {/* MOBILE MENU DRAWER */}
       <div
-        className={`absolute top-12 left-0 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-xl px-4 py-4 shadow-2xl transition-all duration-300 ease-in-out lg:hidden z-40 ${isMobileMenuOpen
-          ? "translate-y-0 opacity-100 pointer-events-auto block"
-          : "-translate-y-4 opacity-0 pointer-events-none hidden"
-          }`}
+        className={`absolute top-12 left-0 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-xl px-4 py-4 shadow-2xl transition-all duration-300 ease-in-out lg:hidden z-40 ${
+          isMobileMenuOpen
+            ? "translate-y-0 opacity-100 pointer-events-auto block"
+            : "-translate-y-4 opacity-0 pointer-events-none hidden"
+        }`}
       >
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-2.5">
@@ -578,15 +578,15 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 autoPlay
                 playsInline
                 muted
-                className={`h-full w-full object-cover ${hideLocalVideo ? "hidden" : "block"}`}
+                className={`h-full w-full object-cover ${
+                  hideLocalVideo ? "hidden" : "block"
+                }`}
               />
               {hideLocalVideo && (
                 <div className="relative w-full h-[250px] sm:h-[350px] md:h-[450px] lg:h-[550px] bg-black">
-
                   <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-white text-xs font-semibold">
                     Camera is off
                   </div>
-
                 </div>
               )}
               <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 rounded-full bg-slate-900/80 border border-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-md">
@@ -599,10 +599,11 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 <button
                   onClick={handleToggleMute}
                   title={isMuted ? "Unmute" : "Mute"}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all ${isMuted
-                    ? "bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-sm"
-                    : "bg-white/10 text-white hover:bg-white/20"
-                    }`}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all ${
+                    isMuted
+                      ? "bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-sm"
+                      : "bg-white/10 text-white hover:bg-white/20"
+                  }`}
                 >
                   {isMuted ? (
                     <MicOff className="h-3.5 w-3.5" />
@@ -617,17 +618,17 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 <button
                   onClick={handleToggleLocalVideo}
                   title={hideLocalVideo ? "Turn on Camera" : "Turn off Camera"}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all ${hideLocalVideo
-                    ? "bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-sm"
-                    : "bg-white/10 text-white hover:bg-white/20"
-                    }`}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all ${
+                    hideLocalVideo
+                      ? "bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-sm"
+                      : "bg-white/10 text-white hover:bg-white/20"
+                  }`}
                 >
                   {hideLocalVideo ? (
                     <VideoOff className="h-3.5 w-3.5" />
                   ) : (
                     <Video className="h-3.5 w-3.5" />
                   )}
-
                 </button>
               </div>
             </div>
@@ -654,8 +655,9 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                className={`h-full w-full object-cover ${!isConnected || isSearchingNext ? "hidden" : "block"
-                  }`}
+                className={`h-full w-full object-cover ${
+                  !isConnected || isSearchingNext ? "hidden" : "block"
+                }`}
               />
 
               <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 rounded-full bg-slate-900/80 border border-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-md">
@@ -666,10 +668,11 @@ export default function CombinedVideoChatPage({ params }: Props) {
               {isConnected && !isSearchingNext && (
                 <button
                   onClick={() => setIsFriendAdded(!isFriendAdded)}
-                  className={`hidden lg:flex absolute bottom-2.5 left-2.5 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold backdrop-blur-md transition shadow-sm ${isFriendAdded
-                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white"
-                    : "bg-slate-900/70 border border-white/15 text-white hover:bg-slate-900/90"
-                    }`}
+                  className={`hidden lg:flex absolute bottom-2.5 left-2.5 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold backdrop-blur-md transition shadow-sm ${
+                    isFriendAdded
+                      ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white"
+                      : "bg-slate-900/70 border border-white/15 text-white hover:bg-slate-900/90"
+                  }`}
                 >
                   {isFriendAdded ? (
                     <>
@@ -687,7 +690,6 @@ export default function CombinedVideoChatPage({ params }: Props) {
 
           {/* Action Control Buttons */}
           <div className="grid grid-cols-4 gap-1.5 lg:gap-2 shrink-0">
-
             {/* Both Button */}
             <button
               onClick={() => showToast("Both gender filter feature is Coming Soon!")}
@@ -703,7 +705,6 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 </div>
               </div>
             </button>
-
 
             {/* Settings Button */}
             <button
@@ -722,6 +723,7 @@ export default function CombinedVideoChatPage({ params }: Props) {
                 </div>
               </div>
             </button>
+
             {/* Stop Button */}
             <button
               onClick={handleStopCall}
@@ -729,8 +731,8 @@ export default function CombinedVideoChatPage({ params }: Props) {
               style={{ backgroundColor: "#FFBD31" }}
               className="flex items-center justify-center gap-1.5 rounded-xl hover:opacity-90 p-2 lg:p-2.5 text-slate-900 font-bold shadow-xs transition-all border border-amber-300 cursor-pointer"
             >
-              <Square className="h-3.5 w-3.5 fill-slate-900 text-slate-900" />
-              <span className="text-[11px] lg:text-xs font-bold truncate">Stop</span>
+              <Square className="h-3.5 w-3.5 fill-white text-white" />
+              <span className="text-[11px] lg:text-xs font-bold text-white">Stop</span>
             </button>
 
             {/* Start / Next Button */}
@@ -797,10 +799,11 @@ export default function CombinedVideoChatPage({ params }: Props) {
           className={`
           bg-white shadow-2xl transition-all duration-300 z-30 flex flex-col
           lg:relative lg:w-72 lg:rounded-xl lg:border lg:border-slate-200/80
-          ${isChatVisible
+          ${
+            isChatVisible
               ? "flex fixed inset-x-0 bottom-0 h-[45vh] rounded-t-2xl border-t border-slate-200 lg:h-auto"
               : "hidden"
-            }
+          }
         `}
         >
           <div className="flex items-center justify-between border-b border-slate-100 p-2.5 shrink-0">
@@ -835,8 +838,9 @@ export default function CombinedVideoChatPage({ params }: Props) {
               return (
                 <div
                   key={msg.id}
-                  className={`group relative flex flex-col ${isMe ? "items-end" : "items-start"
-                    }`}
+                  className={`group relative flex flex-col ${
+                    isMe ? "items-end" : "items-start"
+                  }`}
                 >
                   <div className="flex items-center gap-1">
                     {isMe && (
@@ -849,10 +853,11 @@ export default function CombinedVideoChatPage({ params }: Props) {
                     )}
 
                     <div
-                      className={`max-w-[85%] rounded-xl px-3 py-1.5 text-xs font-medium shadow-xs ${isMe
-                        ? "bg-[#1455e8] text-white rounded-br-none"
-                        : "bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200/60"
-                        }`}
+                      className={`max-w-[85%] rounded-xl px-3 py-1.5 text-xs font-medium shadow-xs ${
+                        isMe
+                          ? "bg-[#1455e8] text-white rounded-br-none"
+                          : "bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200/60"
+                      }`}
                     >
                       {msg.message}
                     </div>
